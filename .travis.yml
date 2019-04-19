@@ -1,0 +1,15 @@
+language: java
+jdk: oraclejdk8
+
+env:
+  global:
+    - CODECOV_TOKEN="62f7c139-8a99-45fd-a85b-037120131f39"
+
+deploy:
+  provider: script
+  script: bash ./deploy.sh
+  on:
+    branch: master
+    
+after_success:
+  - bash <(curl -s https://codecov.io/bash)

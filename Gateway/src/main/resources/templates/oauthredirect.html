@@ -1,0 +1,51 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<link rel="stylesheet" type="text/css" href="css/historycall.css" />
+<head>
+    <title>История звонков</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<dialog id="dlgGrantRules">
+    <form method="dialog">
+        <p><label id="labelRules">Выдать права приложению с id=0 действовать от вашего имени?
+        </label></p>
+        <menu class="center">
+            <button onclick="refused()">Отклонить</button>
+            <button onclick="accept()">Выдать</button>
+        </menu>
+    </form>
+</dialog>
+<body>
+<nav class="top-menu">
+    <ul class="menu-main">
+        <b th:text="${username}"></b>
+        <li><a href="https://speakstars.ru/phonebook">Телефонная книга</a></li>
+        <li><a href="https://speakstars.ru/historycall">История звонков</a></li>
+        <li><a href="https://speakstars.ru/payment">Кошелек</a></li>
+        <li><a href="https://speakstars.ru/call">Звонок</a></li>
+        <li><a href="https://speakstars.ru/logout">Выйти</a></li>
+    </ul>
+</nav>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    var appId = [[${appId}]];
+    var scope = [[${scope}]];
+    function refused() {
+        window.location.replace("/authorization?appID="+appId+"&status=refused");
+    }
+    function accept() {
+        window.location.replace("/authorization?appID="+appId+"&status=accept");
+    }
+    function getText(){
+        return "Выдать права:"+scope+" приложению с id="+appId+" действовать от вашего имени?";
+    }
+    /*]]>*/
+</script>
+<body onload="labelRules.innerText =getText();
+dlgGrantRules.showModal()"/>
+
+<div class="center">
+    <p th:text="${name}" />
+</div>
+</body>
+</html>

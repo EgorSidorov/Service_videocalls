@@ -1,0 +1,62 @@
+﻿<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns="http://www.w3.org/1999/html">
+<link rel="stylesheet" type="text/css" href="css/payment.css" />
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+function validate_form()
+{
+	valid = true;
+        if ( document.coins_form.coins.value == "" )
+        {
+                alert ( "Пожалуйста, введите сумму для добавления в кошелек" );
+		return false;
+        }
+	
+        if ( !isNumeric(document.coins_form.coins.value) )
+        {
+                alert ( "Пожалуйста, введите число" );
+                return false;
+        }
+        return valid;
+}
+
+function isNumeric(n) {
+  return !isNaN(parseFloat(n)) && isFinite(n);
+}
+    /*]]>*/
+</script>
+
+ <head>
+     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>Платеж</title>
+ </head>
+ <body>
+
+
+ <nav class="top-menu">
+     <ul class="menu-main">
+         <b th:text="${username}"></b>
+         <li><a href="https://speakstars.ru/phonebook">Телефонная книга</a></li>
+         <li><a href="https://speakstars.ru/historycall">История звонков</a></li>
+         <li><a href="https://speakstars.ru/payment">Кошелек</a></li>
+         <li><a href="https://speakstars.ru/call">Звонок</a></li>
+         <li><a href="https://speakstars.ru/logout">Выйти</a></li>
+     </ul>
+ </nav>
+
+<div class="center">
+<h2 th:text="'Текущий баланс:'+${cash}+' рублей'"></h2>
+    <h2 th:text="${message}"></h2>
+</div>
+
+<div class="center">
+<form action="https://speakstars.ru/payment" name="coins_form" onsubmit="return validate_form();">
+  <input type="text" name="coins" value=""/><br/>
+  <button type="submit" method="get"><img width="30" height="30" src="image/coins.png"/>Добавить</button>
+</form>
+</div>
+
+ </body>
+</html>
+

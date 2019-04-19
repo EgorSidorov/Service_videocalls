@@ -1,0 +1,49 @@
+﻿<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<link rel="stylesheet" type="text/css" href="css/historycall.css" />
+ <head>
+     <title>История звонков</title>
+     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+ </head>
+ <body>
+<nav class="top-menu">
+  <ul class="menu-main">
+<b th:text="${username}"></b>
+<li><a href="https://speakstars.ru/phonebook">Телефонная книга</a></li>
+<li><a href="https://speakstars.ru/historycall">История звонков</a></li>
+<li><a href="https://speakstars.ru/payment">Кошелек</a></li>
+<li><a href="https://speakstars.ru/call">Звонок</a></li>
+<li><a href="https://speakstars.ru/logout">Выйти</a></li>
+</ul>
+</nav>
+
+<div class="center">
+<h2>История звонков</h2>
+</div>
+<div class="autoriz_cont">
+<table>
+  <colgroup>
+    <col span="4" style="background:Khaki"/><!-- С помощью этой конструкции задаем цвет фона для первых двух столбцов таблицы-->
+    <col style="background-color:LightCyan"/><!-- Задаем цвет фона для следующего (одного) столбца таблицы-->
+  </colgroup>
+  <tr>
+    <th>Дата</th>
+    <th>Тип звонка</th>
+    <th>Абонент</th>
+    <th>Длительность, сек</th>
+  </tr>
+    <tr th:each="historyiter,iterStat : ${historystringiter}" th:class="${iterStat.odd}? 'odd'">
+        <td th:text="${datestring[historyiter]}"></td><td th:text="${typestring[historyiter]}"></td><th th:text="${namestring[historyiter]}"></th><th th:text="${durationstring[historyiter]}"></th>
+    </tr>
+</table>
+</div>
+<div class="center">
+<div class="pagination">
+  <a href="https://speakstars.ru/historycall?page=0">&laquo;</a>
+  <a th:attr="href='https://speakstars.ru/historycall?page='+${page}" th:text="${page}"></a>
+  <a th:attr="href='https://speakstars.ru/historycall?page='+${page2}" th:text="${page2}" class="active"></a>
+  <a th:attr="href='https://speakstars.ru/historycall?page='+${page3}" th:text="${page3}"></a>
+</div>
+</div>
+ </body>
+</html>

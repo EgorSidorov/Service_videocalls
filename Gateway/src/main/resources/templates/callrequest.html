@@ -1,0 +1,322 @@
+﻿<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+ <title>Getting Started: Serving Web Content</title>
+ <style type="text/css">
+  html { height: 100%; }
+  body { height: 100%; margin: 0; background: #111; text-align: center; }
+  #remoteVideo { height: 70%; margin-top: 5%; background: #000; }
+  #localVideo { width: 20%; position: absolute; right: 1.1em; bottom: 1em; border: 1px solid #333; background: #000; }
+  #callButton { position: absolute; display: inline-block; left: 50%; font-size: 2em; bottom: 5%; border-radius: 1em; }
+  #endCall { position: absolute; display: inline-block; left: 30%; font-size: 2em; bottom: 5%; border-radius: 1em; }
+  #userlist { position: absolute; display: inline-block; left: 10%; font-size: 2em; bottom: 5%; border-radius: 1em; }
+  #status_string { position: absolute; display: inline-block; font-size: large;color:green;left: 50%; bottom-size: 2em; top: 5%; border-radius: 1em; }
+ </style>
+</head>
+
+<video id="localVideo" autoplay="autoplay"/>
+<video id="remoteVideo" autoplay="autoplay"/>
+<button id="callButton" onclick="CreateOffer();">✆</button>
+<button id="endCall" onclick="endCall();">Закончить</button>
+<select id="userlist">
+ <option th:each="listelem : ${alllist}" th:text="${listelem}"/>
+</select>
+<dialog id="callDialog">
+ <form method="dialog">
+  <p><label id="call_user">Username вызывает
+  </label></p>
+  <menu>
+   <button onclick="SetNotReadyStatus()">Отклонить</button>
+   <button onclick="SetReadyStatus()">Принять</button>
+  </menu>
+ </form>
+</dialog>
+<label id="status_string"/>
+
+<script th:inline="javascript">
+ /*<![CDATA[*/
+ var PeerConnection = window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
+ var IceCandidate = window.mozRTCIceCandidate || window.RTCIceCandidate;
+ var SessionDescription = window.mozRTCSessionDescription || window.RTCSessionDescription;
+ var requestIntervalFunction;
+ var requestUser = '';
+ navigator.getUserMedia = navigator.getUserMedia || navigator.mozGetUserMedia || navigator.webkitGetUserMedia;
+ var jsonIceCandidates = {};
+ var countIceCandidates = 0;
+ var functionCheckCallsForMe;
+ var pc; // PeerConnection
+ var localDescription;
+ var duration = 0;
+ var isinputcall = true;
+
+ /*   constants     */
+ var addressSite = 'https://speakstars.ru/';
+ var intervalCheckCallsForMe = 6000;
+ var intervalWaitBeforeStart = 4000;
+ var intervalSendRequestForCalls = 1000;
+ var intervalTimeout = 10000;
+ var pc_config = {};
+ /*   constants     */
+
+ /*   querys     */
+ var setCallAnswer = 'Video/CallAnswer'; //GET ?username ?status ?counttoicecandidates
+ var setCallRequest = 'Video/CallRequest'; //GET ?username ?firsttime ?countfromicecandidates
+ var setToICECandidates = 'Video/CallRequestToIceCandidates'; //POST
+ var setToDescription  = 'Video/CallRequestToDescription'; //POST
+ var setFromICECandidates = 'Video/CallRequestFromIceCandidates'; //POST
+ var setFromDescription = 'Video/CallRequestFromDescription'; //POST
+ var setWithdrawCash = 'withdraw';
+ var addCall = 'addcall';
+
+ var getTOICECandidates = 'Video/GetToIceCandidates'; //GET ?username
+ var getToDescription = 'Video/GetToDescription'; //GET ?username
+ var getFromICECandidates = 'Video/GetFromIceCandidates'; //GET ?username
+ var getFromDescription = 'Video/GetFromDescription'; //GET ?username
+ var getMyCallRequest = 'Video/MyCallRequest'; //GET
+ var getCallAnswer = 'Video/GetCallAnswer'; //GET ?username
+ var getCountToICECandidates = 'Video/GetCountToIceCandidates'; //GET ?username
+ var getCountFromICECandidates = 'Video/GetCountFromIceCandidates'; //GET ?username
+ /*   querys     */
+
+ //функция для ответа на звонок
+ function SetReadyStatus()
+ {
+     clearInterval(functionCheckCallsForMe);
+     isinputcall = false;
+     var answerFromGetCountFromIceCandidates = function(response) {
+
+         //remote description
+         var answerFromDescription = function(response2) {
+             var responsejson = JSON.parse(response2);
+             var jsonlevel2 = responsejson['fromdescription'];
+             //alert('before setremotedescription');
+             //alert(pc.signalingState);
+             //alert(jsonlevel2.substr(1,jsonlevel2.length-1));
+             pc.setRemoteDescription(new SessionDescription({type:"offer",sdp:jsonlevel2}),function(){
+                     //alert('after setremotedescription');
+                     //alert(pc.signalingState);
+                     var countFromIceCandidates = JSON.parse(response)['countfromicecandidates'];
+                     //ice candidates
+                     var answerFromIceCandidates = function(response3) {
+                         var responsejson1 = JSON.parse(response3);
+                         var jsonlevel3 = JSON.parse(responsejson1['fromicecandidates']);
+                         //alert(jsonlevel3['1']['candidate']);
+                         for (var jjj = 1; jjj <= countFromIceCandidates; jjj++) {
+                             var candidate = new IceCandidate({
+                                 sdpMLineIndex: jsonlevel3[jjj.toString()]['label'],
+                                 candidate: jsonlevel3[jjj.toString()]['candidate']
+                             });
+                             pc.addIceCandidate(candidate,function(){},function(error){alert('error add ice candidate:'+error);});
+                         }
+                         CreateAnswer();
+                         setTimeout(function(){duration++;}, 1000)
+                     };
+                     Send(addressSite+getFromICECandidates+'?username='+requestUser, 'GET', answerFromIceCandidates, 'none', false);},
+                 function(error){
+                     alert('error setRemoteDescription:'+error);
+                 });
+         };
+         Send(addressSite+getFromDescription+'?username='+requestUser, 'GET', answerFromDescription, 'none', false);
+     };
+     Send(addressSite+getCountFromICECandidates+'?username='+requestUser, 'GET', answerFromGetCountFromIceCandidates, 'none', false);
+ }
+
+ //функция для отклонения звонка
+ function SetNotReadyStatus() {
+     var string = requestUser+String.fromCharCode(38)+'status=2';
+     SendWithoutAnswer(addressSite+setCallAnswer+'?username='+string, 'GET', 'none', false)
+ }
+
+ navigator.getUserMedia(
+     { audio: true, video: true },
+     function(stream){
+         document.getElementById("callButton").style.display = 'inline-block';
+         document.getElementById("localVideo").srcObject = stream;
+         pc = new PeerConnection(pc_config);
+         pc.addStream(stream);
+         pc.onicecandidate = gotIceCandidate;
+         pc.onaddstream = GotRemoteStream;
+     },
+     function(error) { console.log(error) }
+ );
+
+ function CreateOffer() {
+     pc.createOffer(
+         GotLocalDescription,
+         function(error) { console.log(error) },
+         { 'mandatory': { 'OfferToReceiveAudio': true, 'OfferToReceiveVideo': true } }
+     );
+     //откладываем звонок, чтобы успели создаться ice кандидаты и записаться локальный дескриптор
+     setTimeout(BeginCallRequests,intervalWaitBeforeStart);
+ }
+
+ function endCall() {
+     //var addcallstring = addCall+'?duration='+duration+String.fromCharCode(38)+'usernameto='+requestUser;
+     //alert(addcallstring);
+     SendWithoutAnswer(addressSite+setWithdrawCash+'?cash=100', 'GET', 'none', false);
+     SendWithoutAnswer(addressSite+addCall+'?duration='+duration+String.fromCharCode(38)+'usernameto='+requestUser,'GET', 'none', false);
+     window.location.replace(addressSite+"payment");
+ }
+
+ function CreateAnswer() {
+     pc.createAnswer(
+         GotLocalDescription,
+         function(error) { console.log(error);alert('error create answer:'+error); },
+         { 'mandatory': { 'OfferToReceiveAudio': true, 'OfferToReceiveVideo': true } }
+     );
+     setTimeout(function () {
+         //alert(JSON.stringify(jsonIceCandidates));
+         //alert(JSON.stringify(localDescription));
+
+         SendWithoutAnswer(addressSite+setToICECandidates+'?username='+requestUser, 'POST', JSON.stringify(jsonIceCandidates), true);
+         SendWithoutAnswer(addressSite+setToDescription+'?username='+requestUser, 'POST', JSON.stringify(localDescription['sdp']), true);
+         var string = requestUser+String.fromCharCode(38)+'status=1';
+         SendWithoutAnswer(addressSite+setCallAnswer+'?username='+string+String.fromCharCode(38)+'counttoicecandidates='+countIceCandidates,'GET','none',false);
+     },intervalWaitBeforeStart);
+ }
+
+
+ function GotLocalDescription(description){
+     //alert('success got local description');
+     pc.setLocalDescription(description);
+     localDescription = description;
+ }
+
+ function gotIceCandidate(event){
+     //alert('got '+(countIceCandidates+1).toString()+' ice candidate');
+     if (event.candidate) {
+         countIceCandidates++;
+         addIceCandidate({
+             type: 'candidate',
+             label: event.candidate.sdpMLineIndex,
+             id: event.candidate.sdpMid,
+             candidate: event.candidate.candidate
+         });
+     }
+ }
+
+ function GotRemoteStream(event){
+     document.getElementById("remoteVideo").srcObject = event.stream;
+ }
+
+
+ //начинаем звонить пользователю
+ function BeginCallRequests(){
+     var sdpstr = localDescription['sdp'];
+     //alert(JSON.stringify(jsonIceCandidates));
+     //alert(JSON.stringify(localDescription['sdp']));
+     SendWithoutAnswer(addressSite+setFromICECandidates, 'POST', JSON.stringify(jsonIceCandidates), true);
+     SendWithoutAnswer(addressSite+setFromDescription, 'POST', JSON.stringify(localDescription['sdp']), true);
+     var select = document.getElementById("userlist");
+     var value = select.value;
+     SendWithoutAnswer(addressSite+setCallRequest+'?username='+value+String.fromCharCode(38)+'firstTime=true'+String.fromCharCode(38)+'countfromicecandidates='+countIceCandidates, 'GET', 'none', false);
+     document.getElementById("status_string").innerText = 'Ожидание ответа на звонок';
+     requestIntervalFunction = setInterval(IntervalCallRequests, intervalSendRequestForCalls);
+ }
+
+ function addIceCandidate(messageCandidate) {
+     jsonIceCandidates[countIceCandidates.toString()] = messageCandidate;
+ }
+
+ //функция для опрашивания сервера об ответе на исходящий звонок
+ function IntervalCallRequests() {
+     findCallAnswer = function(response) {
+         var responsejson = JSON.parse(response);
+         var select = document.getElementById("userlist");
+         var value = select.value;
+         requestUser = value;
+         if(responsejson["StatusCall"] == "0") {
+             //пользователь не ответил на звонок
+             SendWithoutAnswer(addressSite+setCallRequest+'?username='+value+String.fromCharCode(38)+'firstTime=false', 'GET', 'none', false)
+         } else {
+             if(responsejson["StatusCall"] == "1") {
+                 document.getElementById("status_string").innerText = 'Пользователь принял вызов';
+                 var answerFromGetCountToIceCandidates = function(response2) {
+                     var countToIceCandidates = JSON.parse(response2)['counttoicecandidates'];
+                     //alert(countToIceCandidates);
+
+                     answerGetToDescription = function(response3) {
+                         var responsejson1 = JSON.parse(response3);
+                         var jsonlevel2 = responsejson1['todescription'];
+                         //alert('after getToDescription');
+                         pc.setRemoteDescription(new SessionDescription({type:"answer",sdp:jsonlevel2},function () {
+                             //alert('success create');
+                             answerGetToIceCandidates = function(response4) {
+                                 var responsejson2 = JSON.parse(response4);
+                                 var jsonlevel3 = JSON.parse(responsejson2['toicecandidates']);
+                                 for (var jjj = 1; jjj <= countToIceCandidates; jjj++) {
+                                     var candidate = new IceCandidate({
+                                         sdpMLineIndex: jsonlevel3[jjj.toString()]['label'],
+                                         candidate: jsonlevel3[jjj.toString()]['candidate']
+                                     });
+                                     pc.addIceCandidate(candidate,function(){},function(error){alert('error add ice candidate:'+error);});
+                                 }
+                             };
+                             Send(addressSite+getTOICECandidates+'?username='+value, 'GET', answerGetToIceCandidates, 'none', false);
+                         },function (error) {
+                             alert('error add description:'+error);
+                         }));
+                     };
+                     Send(addressSite+getToDescription+'?username='+value, 'GET', answerGetToDescription, 'none', false);
+                 };
+                 Send(addressSite+getCountToICECandidates+'?username='+value, 'GET', answerFromGetCountToIceCandidates, 'none', false);
+             }
+             else if(responsejson["StatusCall"] == "2") {
+                 document.getElementById("status_string").innerText = 'Пользователь отклонил вызов';
+             }
+             clearInterval(requestIntervalFunction);
+         }
+     };
+     var select = document.getElementById("userlist");
+     var value = select.value;
+     Send(addressSite+getCallAnswer+'?username='+value,'GET',findCallAnswer,'none',false);
+ }
+
+ //проверить, никто ли не звонит в текущий момент
+ function CheckCallsForMe()
+ {
+     var answerFunction = function(response) {
+         var responsejson = JSON.parse(response);
+         if(responsejson["Request"].length !== 0) {
+             requestUser = responsejson["Request"];
+             document.getElementById("call_user").innerText = responsejson["Request"] + ' вызывает';
+             callDialog.showModal();
+         }
+     };
+     Send(addressSite+getMyCallRequest, 'GET' , answerFunction, 'none' , false)
+ }
+
+ function SendWithoutAnswer(requestUrl, type, postInfo, isTypeJson)
+ {
+     var xhr = new XMLHttpRequest();
+     xhr.open(type, requestUrl, true);
+     xhr.timeout = intervalTimeout;
+     if(isTypeJson)
+         xhr.setRequestHeader("Content-type", "application/json");
+     if(postInfo != 'none')
+         xhr.send(postInfo);
+     else
+         xhr.send();
+ }
+
+ function Send(requestUrl, type, callBackFunction, postInfo, isTypeJson)
+ {
+     var xhr = new XMLHttpRequest();
+     xhr.open(type, requestUrl, true);
+     xhr.timeout = intervalTimeout;
+     if(isTypeJson)
+         xhr.setRequestHeader("Content-type", "application/json");
+     if(postInfo != 'none')
+         xhr.send(postInfo);
+     else
+         xhr.send();
+     xhr.onreadystatechange = function() {
+         if (this.readyState === 4 && this.status === 200) {
+             callBackFunction(this.response.toString());
+         }
+     };
+ }
+ /*]]>*/
+</script>
+<body onload="functionCheckCallsForMe = setInterval(CheckCallsForMe,intervalCheckCallsForMe);"/>
+</html>
