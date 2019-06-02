@@ -68,7 +68,7 @@ public class WebRTCController {
 												@RequestParam(name="serviceToken", defaultValue = "-1") String serviceToken,
 												@RequestParam(name="serviceSalt", defaultValue = "-1") String serviceSalt,
 												@RequestParam(name="serviceTime", defaultValue = "-1") String serviceTime,
-										  HttpServletResponse response) {
+										  HttpServletResponse response) throws SQLException {
 		WebRTCModel model = new WebRTCModel();
 		HashMap<String, Object> jsonAnswer = new LinkedHashMap<String, Object>();
 		if(model.checkServiceToken(serviceToken,serviceSalt,serviceTime))
@@ -81,6 +81,43 @@ public class WebRTCController {
 		}
 		if (!usernameto.isEmpty() && !usernameto.contains(" ")) {
 			if (model.AddPhoneBook(usernamefrom, usernameto)) {
+				setStatus(200, response, jsonAnswer);
+			} else {
+				if (!model.GetDbStatus()) {
+					setStatus(500, response, jsonAnswer);
+				} else {
+					setStatus(406, response, jsonAnswer);
+				}
+			}
+		} else {
+			setStatus(400, response, jsonAnswer);
+		}
+		try {
+			model.finalize();
+		} catch (SQLException exc) {}
+		return jsonAnswer;
+	}
+
+	@GetMapping("/Remove_phonebook")
+	@ResponseBody
+	public HashMap<String, Object> RemovePhoneBook(@RequestParam(name="username", defaultValue= "") String usernameto,
+												@RequestParam(name="usernamefrom", defaultValue="") String usernamefrom,
+												@RequestParam(name="serviceToken", defaultValue = "-1") String serviceToken,
+												@RequestParam(name="serviceSalt", defaultValue = "-1") String serviceSalt,
+												@RequestParam(name="serviceTime", defaultValue = "-1") String serviceTime,
+												HttpServletResponse response) throws SQLException {
+		WebRTCModel model = new WebRTCModel();
+		HashMap<String, Object> jsonAnswer = new LinkedHashMap<String, Object>();
+		if(model.checkServiceToken(serviceToken,serviceSalt,serviceTime))
+		{
+			setStatus(405,response,jsonAnswer);
+			try {
+				model.finalize();
+			} catch (SQLException exc) {}
+			return jsonAnswer;
+		}
+		if (!usernameto.isEmpty() && !usernameto.contains(" ")) {
+			if (model.RemovePhoneBook(usernamefrom, usernameto)) {
 				setStatus(200, response, jsonAnswer);
 			} else {
 				if (!model.GetDbStatus()) {
@@ -213,6 +250,7 @@ public class WebRTCController {
 
 	@PostMapping("/Video/CallRequestToIceCandidates")
 	public String SetCallRequestToIceCandidates(@RequestParam(name="username", required=false, defaultValue= "") String username,
+												@RequestParam(name="usernamefrom", required=false, defaultValue= "") String usernamefrom,
 												@RequestBody String jsonInputString,
 												@RequestParam(name="serviceToken", defaultValue = "-1") String serviceToken,
 												@RequestParam(name="serviceSalt", defaultValue = "-1") String serviceSalt,
@@ -220,6 +258,7 @@ public class WebRTCController {
 												Model uimodel,
 												HttpServletResponse response) throws ParseException {
 		WebRTCModel model = new WebRTCModel();
+		model.SetLogs("/Video/CallrequestTomIceCandidates?usernamefrom="+usernamefrom+"&username="+username+"&json="+ jsonInputString.toString());
 		if(model.checkServiceToken(serviceToken,serviceSalt,serviceTime))
 		{
 			response.setStatus(405);
@@ -228,7 +267,7 @@ public class WebRTCController {
 			} catch (SQLException exc) {}
 			return "testfile";
 		}
-		//model.SetLogs("/Video/CallrequestTomIceCandidates?Token="+token+"&username="+username);
+		model.SetLogs("/Video/CallrequestTomIceCandidates?usernamefrom="+usernamefrom+"&username="+username+"&json="+ jsonInputString.toString());
 		if(!jsonInputString.isEmpty())
 		{
 			model.SetCallRequestToIceCandidates( username,jsonInputString);
@@ -689,34 +728,24 @@ public class WebRTCController {
 		return jsonAnswer;
 	}
 
-    @PostMapping("/GetServiceToken")
-    @ResponseBody
-    public HashMap<String, String> getServiceToken(@RequestBody String password) {
-        WebRTCModel model = new WebRTCModel();
-        model.SetLogs("/GetServiceToken");
-        HashMap<String, String> jsonAnswer = new LinkedHashMap<String, String>();
-        if(!password.equals(Startup.servicePassword)){
-            try {
-                model.finalize();
-            } catch (SQLException exc) {}
-            jsonAnswer.put("token","");
-            jsonAnswer.put("salt","");
-            jsonAnswer.put("time","");
-            return jsonAnswer;
-        }
-        String time = String.valueOf(System.currentTimeMillis() + Startup.timelivems);
-        String salt = generateToken();
-        String token = org.apache.commons.codec.digest.DigestUtils.md5Hex(Startup.serviceLogin+Startup.servicePassword+salt+time);
-        jsonAnswer.put("token",token);
-        jsonAnswer.put("salt",salt);
-        jsonAnswer.put("time",time);
-        model.SetLogs("/GetServiceToken?serviceToken="+token+
-                "&serviceSalt="+salt+"&serviceTime="+time);
-        try {
-            model.finalize();
-        } catch (SQLException exc) {}
-        return jsonAnswer;
-    }
+	@GetMapping("/GetServiceToken")
+	@ResponseBody
+	public HashMap<String, String> GetServiceToken() {
+		HashMap<String, String> jsonAnswer = new LinkedHashMap<String, String>();
+		String time = String.valueOf(System.currentTimeMillis() + Startup.timelivems);
+		String salt = generateToken();
+		String token = org.apache.commons.codec.digest.DigestUtils.md5Hex(Startup.serviceLogin+Startup.servicePassword+salt+time);
+		jsonAnswer.put("token",token);
+		jsonAnswer.put("salt",salt);
+		jsonAnswer.put("time",time);
+		WebRTCModel model = new WebRTCModel();
+		//model.SetLogs("/GetServiceToken?serviceToken="+token+
+		//		"&serviceSalt="+salt+"&serviceTime="+time);
+		try {
+			model.finalize();
+		} catch (SQLException exc) {}
+		return jsonAnswer;
+	}
 
 	@GetMapping("/CheckServiceToken")
 	@ResponseBody
@@ -727,8 +756,8 @@ public class WebRTCController {
 	{
 		HashMap<String, Object> jsonAnswer = new LinkedHashMap<String, Object>();
 		WebRTCModel model = new WebRTCModel();
-		model.SetLogs("/CheckServiceToken?serviceToken="+serviceToken+
-				"&serviceSalt="+serviceSalt+"&serviceTime="+serviceTime);
+		//model.SetLogs("/CheckServiceToken?serviceToken="+serviceToken+
+		//		"&serviceSalt="+serviceSalt+"&serviceTime="+serviceTime);
 		if(model.checkServiceToken(serviceToken,serviceSalt,serviceTime))
 			setStatus(405,response,jsonAnswer);
 		else
@@ -779,7 +808,7 @@ public class WebRTCController {
 		if(status == 406)//Not Acceptable
 		{
 			jsonAnswer.put("Status","Error");
-			jsonAnswer.put("Status message","Username is used");
+			jsonAnswer.put("Status message","Exists");
 		}
 		if(status == 405)//Not Acceptable
 		{

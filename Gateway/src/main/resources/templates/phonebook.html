@@ -1,6 +1,9 @@
 ﻿<!DOCTYPE HTML>
 <html xmlns:th="http://www.thymeleaf.org">
 <link rel="stylesheet" type="text/css" href="css/phonebook.css" />
+<style type="text/css">
+    #userlist { display: inline-block; font-size: 2em; border-radius: 1em; }
+</style>
 <head>
     <title>Телефонная книга</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
@@ -19,11 +22,17 @@
 
 <div class="center">
     <h2>Телефонная книга</h2>
+    <h2 th:text="${state}"></h2>
+    <select id="userlist">
+        <option th:each="listelem : ${alllist}" th:text="${listelem}"/>
+    </select>
+</div>
+<div class="phonebook_cont">
 <form method="get" action="https://speakstars.ru/phonebook">
     <p>
         <input type="text" name="username" placeholder="Введите имя пользователя"/>
-        <input type="hidden" name="status" value="action"/>
-        <input type="submit"  value="Добавить"/>
+        <input type="submit" name="status" value="Добавить"/>
+        <input type="submit" name="status" value="Удалить"/>
     </p>
 </form>
 </div>

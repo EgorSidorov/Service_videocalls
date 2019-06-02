@@ -10,12 +10,12 @@ public class EasyAuth {
     private Boolean _queryStatus = false;
     private Boolean _dbStatus;
     private String  _stringConnection;
-    private String  _tableName;
-    private String  _nameFieldUserName;
-    private String  _nameFieldPassword;
+    public String  _tableName;
+    public String  _nameFieldUserName;
+    public String  _nameFieldPassword;
     private String  _nameFieldToken;
     private String  _nameFieldTime;
-    private int     _timeLiveTokenms = 60000*30;
+    private int     _timeLiveTokenms = 60000*300;
     private int     _countAviableTokens;
     private String  _errorMessage = "";
     private String  _lastRequest = "";
@@ -110,18 +110,20 @@ public class EasyAuth {
 
     public String LogIn(String userName, String password)
     {
+        String token = "";
         if (!CheckUsernamePassword(userName, password))
-            return "";
+            return token;
         password = DigestUtils.md5Hex(password);
         Statement stmtObj = RequestDB("SELECT * FROM " + _tableName + " WHERE " + _nameFieldUserName + "='" + userName + "' AND " + _nameFieldPassword + "='" + password + "'", true);
-        if (!GetQueryStatus())
-            return "";
+        if (!GetQueryStatus()) {
+            return token;
+        }
         Boolean hasNext = false;
         try {
             hasNext = resObj.next();
         } catch (SQLException e) {
             SetErrorStatus(e.getMessage());
-            return "";
+            return token;
         } finally {
             if (stmtObj != null) {
                 try {
@@ -132,9 +134,8 @@ public class EasyAuth {
         }
         if (!hasNext) {
             SetErrorStatus("Invalid login or password");
-            return "";
+            return token;
         }
-        String token = "";
         token = GenerateUniqueToken();
         stmtObj = RequestDB("UPDATE " + _tableName + " SET " + _nameFieldToken + "='" + token + "'," +_nameFieldTime+"="+String.valueOf(System.currentTimeMillis())
                 + " WHERE " + _nameFieldUserName + "='" + userName + "' AND " + _nameFieldPassword + "='" + password + "'", false);
@@ -289,7 +290,7 @@ public class EasyAuth {
         }
     }
 
-    private String GenerateUniqueToken()
+    public String GenerateUniqueToken()
     {
         String token = "";
         if (!_dbStatus) {

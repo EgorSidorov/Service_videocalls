@@ -1,6 +1,15 @@
 ﻿<!DOCTYPE HTML>
 <html xmlns:th="http://www.thymeleaf.org" xmlns="http://www.w3.org/1999/html">
 <link rel="stylesheet" type="text/css" href="css/payment.css" />
+<meta http-equiv="Access-Control-Allow-Credentials" content="true" />
+<meta http-equiv="Access-Control-Allow-Origin" content="*" />
+<meta http-equiv="Access-Control-Allow-Methods" content="GET" />
+<meta http-equiv="Access-Control-Allow-Headers" content="application/json" />
+<meta http-equiv="Content-Type" content="application/json;" />
+
+
+<script th:inline="javascript" th:attr="src='https://www.paypal.com/sdk/js?client-id=AT9lai_PQk1VRnpFqYvarqZUF4L7spREMAwZ00Zbl02KU_X6ekZNpd8GSFm9Z2l22XwQyg-zkC2OvZGI&amp;currency=RUB'">
+</script>
 
 <script th:inline="javascript">
     /*<![CDATA[*/
@@ -12,7 +21,7 @@ function validate_form()
                 alert ( "Пожалуйста, введите сумму для добавления в кошелек" );
 		return false;
         }
-	
+
         if ( !isNumeric(document.coins_form.coins.value) )
         {
                 alert ( "Пожалуйста, введите число" );
@@ -51,11 +60,48 @@ function isNumeric(n) {
 </div>
 
 <div class="center">
-<form action="https://speakstars.ru/payment" name="coins_form" onsubmit="return validate_form();">
-  <input type="text" name="coins" value=""/><br/>
-  <button type="submit" method="get"><img width="30" height="30" src="image/coins.png"/>Добавить</button>
-</form>
+    <input type="text" name="coins" id="coins" value=""/><br/>
 </div>
+
+ <div class="center">
+ <div id="paypal-button-container"></div>
+ </div>
+
+ <script>
+     // Render the PayPal button into #paypal-button-container
+     paypal.Buttons({
+         locale: 'ru_RU',
+         style: {
+             layout:  'vertical',
+             color:   'silver',
+             shape:   'pill',
+             label:   'paypal'
+         },
+
+
+         // Set up the transaction
+         createOrder: function(data, actions) {
+             return actions.order.create({
+                 purchase_units: [{
+                     amount: {
+                         value: document.getElementById("coins").value
+                     }
+                 }]
+             });
+         },
+
+         // Finalize the transaction
+         onApprove: function(data, actions) {
+             return actions.order.capture().then(function(details) {
+                 // Show a success message to the buyer
+                 //alert('Transaction completed by ' + details.payer.name.given_name + '!');
+                 window.location.replace("https://speakstars.ru/payment?orderid="+data.orderID);
+             });
+         }
+
+
+     }).render('#paypal-button-container');
+ </script>
 
  </body>
 </html>

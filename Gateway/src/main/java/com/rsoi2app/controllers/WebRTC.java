@@ -6,6 +6,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
+import java.awt.*;
 import java.io.IOException;
 
 @Controller
@@ -106,7 +107,7 @@ public class WebRTC {
         return "greeting";
     }
 
-    @GetMapping("/Video/GetCallAnswer")
+    @RequestMapping(method=RequestMethod.GET ,value="/Video/GetCallAnswer", produces = "application/json")
     @ResponseBody
     public String getCallAnswer(@CookieValue(name="Token", defaultValue="") String token,
                                 @RequestParam(name="username", required=false, defaultValue= "") String username,
@@ -121,7 +122,7 @@ public class WebRTC {
     }
 
 
-    @GetMapping("/Video/MyCallRequest")
+    @RequestMapping(method=RequestMethod.GET ,value="/Video/MyCallRequest", produces="application/json")
     @ResponseBody
     public String myCallRequest(@CookieValue(name="Token", defaultValue="") String token,
                                 HttpServletResponse response) throws IOException, ParseException {
@@ -134,7 +135,7 @@ public class WebRTC {
         return "greeting";
     }
 
-    @GetMapping("/Video/GetFromIceCandidates")
+    @RequestMapping(method=RequestMethod.GET ,value="/Video/GetFromIceCandidates", produces="application/json")
     @ResponseBody
     public String getFromIceCandidates(@CookieValue(name="Token", defaultValue="") String token,
                                        @RequestParam(name="username", required=false, defaultValue= "") String username,
@@ -148,7 +149,7 @@ public class WebRTC {
         return "greeting";
     }
 
-    @GetMapping("/Video/GetCountToIceCandidates")
+    @RequestMapping(method=RequestMethod.GET ,value="/Video/GetCountToIceCandidates", produces="application/json")
     @ResponseBody
     public String getCountToIceCandidates(@CookieValue(name="Token", defaultValue="") String token,
                                           @RequestParam(name="username", required=false, defaultValue= "") String username,
@@ -162,7 +163,7 @@ public class WebRTC {
         return "greeting";
     }
 
-    @GetMapping("/Video/GetCountFromIceCandidates")
+    @RequestMapping(method=RequestMethod.GET ,value="/Video/GetCountFromIceCandidates", produces="application/json")
     @ResponseBody
     public String getCountFromIceCandidates(@CookieValue(name="Token", defaultValue="") String token,
                                             @RequestParam(name="username", required=false, defaultValue= "") String username,
@@ -177,7 +178,7 @@ public class WebRTC {
     }
 
 
-    @GetMapping("/Video/GetToIceCandidates")
+    @RequestMapping(method=RequestMethod.GET ,value="/Video/GetToIceCandidates", produces="application/json")
     @ResponseBody
     public String getToIceCandidates(@CookieValue(name="Token", defaultValue="") String token,
                                      @RequestParam(name="username", required=false, defaultValue= "") String username,
@@ -191,7 +192,7 @@ public class WebRTC {
         return "greeting";
     }
 
-    @GetMapping("/Video/GetFromDescription")
+    @RequestMapping(method=RequestMethod.GET ,value="/Video/GetFromDescription", produces="application/json")
     @ResponseBody
     public String getFromDescription(@CookieValue(name="Token", defaultValue="") String token,
                                      @RequestParam(name="username", required=false, defaultValue= "") String username,
@@ -205,7 +206,7 @@ public class WebRTC {
         return "greeting";
     }
 
-    @GetMapping("/Video/GetToDescription")
+    @RequestMapping(method=RequestMethod.GET ,value="/Video/GetToDescription", produces="application/json")
     @ResponseBody
     public String getToDescription(@CookieValue(name="Token", defaultValue="") String token,
                                    @RequestParam(name="username", required=false, defaultValue= "") String username,

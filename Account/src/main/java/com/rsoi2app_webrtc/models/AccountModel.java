@@ -14,7 +14,7 @@ public class AccountModel {
     private Boolean queryStatus;
     public EasyAuth auth;
     public ResultSet resObj;
-    int sizePage = 2;
+    int sizePage = 10;
 
     public AccountModel()
     {
@@ -105,15 +105,23 @@ public class AccountModel {
         return Roles;
     }
 
-    public Boolean CreateUser(String username, String password,String role)
+    public Boolean CreateUser(String username, String password,String role, String uid)
     {
         Boolean success = auth.CreateAccount(username, password);
+        if (success) {
+            SetWithoutAnswer("UPDATE Account.Info SET vkid='"+uid+"' WHERE Username='"+username+"'");
+            return SetWithoutAnswer("INSERT INTO Speakstars.CallRequest (fromus" +
+                    "er,touser) VALUES('" + username + "','')");
+        }
         return success;
     }
 
     public Boolean DeleteUser(String username, String password,String role)
     {
         Boolean success = auth.DeleteAccount(username, password);
+        if (success) {
+            return SetWithoutAnswer("DELETE FROM Speakstars.CallRequest WHERE fromuser='" + username + "'");
+        }
         return success;
     }
 
@@ -125,14 +133,56 @@ public class AccountModel {
     public String Login(String username, String password)
     {
         queryStatus = true;
+        //String logstring = auth._nameFieldUserName + "=" + username + " AND " + auth._nameFieldPassword + "=" + password;
         String authCookie = auth.LogIn(username, password);
         if (auth.GetQueryStatus())
             return authCookie;
         else {
             queryStatus = false;
+            SetLogs(auth.GetLastErrorMessage());
             return "";
         }
     }
+
+    public String LoginVK(String uid)
+    {
+        String token = "";
+        if (uid.contains(" "))
+            return token;
+        Statement stmtObj = RequestDB("SELECT * FROM " + "Account.Info" + " WHERE " + "vkid" + "='" + uid+"'", true);
+        if (!GetQueryStatus()) {
+            return token;
+        }
+        Boolean hasNext = false;
+        try {
+            hasNext = resObj.next();
+        } catch (SQLException e) {
+            queryStatus = false;
+            return token;
+        } finally {
+            if (stmtObj != null) {
+                try {
+                    stmtObj.close();
+                } catch (SQLException e) {
+                }
+            }
+        }
+        if (!hasNext) {
+            queryStatus = false;
+            return token;
+        }
+        token = auth.GenerateUniqueToken();
+        stmtObj = RequestDB("UPDATE " + "Account.Info" + " SET " + "Cookie" + "='" + token + "'," +"time"+"="+String.valueOf(System.currentTimeMillis())
+                + " WHERE " + "vkid" + "='" + uid + "'", false);
+        if (stmtObj != null) {
+            try {
+                stmtObj.close();
+            } catch (SQLException e) {
+            }
+        }
+        return token;
+    }
+
 
     public Boolean Logout(String token)
     {

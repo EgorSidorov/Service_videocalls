@@ -6,7 +6,9 @@ import net.minidev.json.parser.JSONParser;
 import net.minidev.json.parser.ParseException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.*;
+import org.json.*;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
@@ -34,7 +36,7 @@ public class GatewayController {
 		if(!username[0].isEmpty() && !password[0].isEmpty() && !username[0].contains(" ") && !password[0].contains(" "))
 		{
 			String responseStr1 = Utils.requestPostForService(Startup.GetAccountService()+"/Login?username="+username[0],password[0],"none",Utils.Services.Account);
-			if (!responseStr1.contains("Error:")) {
+			if (!responseStr1.contains("Error")) {
 				JSONParser parser = new JSONParser();
 				JSONObject userJson = (JSONObject) parser.parse(responseStr1);
 				if(userJson.get("Status").toString().equals("Success")) {
@@ -58,6 +60,70 @@ public class GatewayController {
 		else {
 			model.addAttribute("name","Error parameters");
 			response.setStatus(400);
+		}
+		return "authorize";
+	}
+
+	@GetMapping("/loginVK")
+	public String loginVK(@RequestParam(name="uid", required=false, defaultValue= "") String uid,
+							 @RequestParam(name="hash", required=false, defaultValue= "") String hash,
+						  Model model,
+						  HttpServletRequest request,
+						  HttpServletResponse response) throws IOException, ParseException {
+		//Utils.requestForService(Startup.GetAccountService()+"/LoginVK?uid="+uid,"none",Utils.Services.Account);
+		if(org.apache.commons.codec.digest.DigestUtils.md5Hex(Startup.appIDVK+uid+Startup.secretVK).equals(hash))
+		{
+			String responseStr1 = Utils.requestForService(Startup.GetAccountService()+"/LoginVK?uid="+uid,"none",Utils.Services.Account);
+			if (!responseStr1.contains("Error")) {
+				JSONParser parser = new JSONParser();
+				JSONObject userJson = (JSONObject) parser.parse(responseStr1);
+				if(userJson.get("Status").toString().equals("Success")) {
+					response.addCookie(new Cookie("Token", userJson.get("Cookie").toString()));
+				return startRedirect();
+			    } else {
+					return "redirect:https://speakstars.ru/registrationVK?uid="+uid+"&hash="+hash;
+					//response.addCookie(new Cookie("Token", userJson.get("Cookie").toString()));
+					//return startRedirect();
+				}
+			}
+			else {
+				response.setStatus(401);
+				return "redirect:https://speakstars.ru/registrationVK?uid="+uid+"&hash="+org.apache.commons.codec.digest.DigestUtils.md5Hex(Startup.appIDVK+uid+Startup.secretVK);
+			}
+		}
+		return "authorize";
+	}
+
+	@GetMapping("/loginVKhard")
+	public String loginVKhard(@RequestParam(name="expire", required=false, defaultValue= "") String expire,
+							  @RequestParam(name="mid", required=false, defaultValue= "") String uid,
+							  @RequestParam(name="secret", required=false, defaultValue= "") String secret,
+							  @RequestParam(name="sid", required=false, defaultValue= "") String sid,
+							  @RequestParam(name="sig", required=false, defaultValue= "") String hash,
+						  Model model,
+						  HttpServletRequest request,
+						  HttpServletResponse response) throws IOException, ParseException {
+		if(org.apache.commons.codec.digest.DigestUtils.md5Hex(
+				"expire="+expire+"mid="+uid+"secret="+secret+"sid="+sid+Startup.secretVK
+		).equals(hash))
+		{
+			String responseStr1 = Utils.requestForService(Startup.GetAccountService()+"/LoginVK?uid="+uid,"none",Utils.Services.Account);
+			if (!responseStr1.contains("Error")) {
+				JSONParser parser = new JSONParser();
+				JSONObject userJson = (JSONObject) parser.parse(responseStr1);
+				if(userJson.get("Status").toString().equals("Success")) {
+					response.addCookie(new Cookie("Token", userJson.get("Cookie").toString()));
+					return startRedirect();
+				} else {
+					return "redirect:https://speakstars.ru/registrationVK?uid="+uid+"&hash="+org.apache.commons.codec.digest.DigestUtils.md5Hex(Startup.appIDVK+uid+Startup.secretVK);
+					//response.addCookie(new Cookie("Token", userJson.get("Cookie").toString()));
+					//return startRedirect();
+				}
+			}
+			else {
+				response.setStatus(401);
+				return "redirect:https://speakstars.ru/registrationVK?uid="+uid+"&hash="+org.apache.commons.codec.digest.DigestUtils.md5Hex(Startup.appIDVK+uid+Startup.secretVK);
+			}
 		}
 		return "authorize";
 	}
@@ -94,16 +160,16 @@ public class GatewayController {
 			String usernameFrom = info.getUsername();
 			model.addAttribute("username",usernameFrom);
 		String responseStr = Utils.requestForService(Startup.GetWebrtcService()+"/PhonebookList"+"?usernamefrom="+usernameFrom,"none",Utils.Services.WebRTC);
-		if (!responseStr.contains("Error:")) {
+		if (!responseStr.contains("Error")) {
 			JSONParser parser = new JSONParser();
 			JSONObject userJson = (JSONObject) parser.parse(responseStr);
 			if (userJson.get("Status").toString().equals("Success")) {
 						String responseStr3 = Utils.requestForService(Startup.GetPaymentService() + "/Show_cash?username=" + usernameFrom, token,Utils.Services.Payment);
-						if (!responseStr3.contains("Error:")) {
+						if (!responseStr3.contains("Error")) {
 							JSONParser parser3 = new JSONParser();
 							JSONObject userJson3 = (JSONObject) parser3.parse(responseStr3);
 							if (userJson3.get("Status").equals("Success")) {
-								if(Integer.parseInt(userJson3.getAsString("cash"))>0)
+								if(Float.parseFloat(userJson3.getAsString("cash"))>=10)
 									model.addAttribute("alllist",userJson.get("UserList"));
 								else
 								{
@@ -140,17 +206,20 @@ public class GatewayController {
 			JSONObject userJson = new JSONObject();
 			String username = "";
 			String responseStr1 = Utils.requestForService(Startup.GetAccountService()+"/UserInfo",token,Utils.Services.Account);
-			if (!responseStr1.contains("Error:")) {
+			if (!responseStr1.contains("Error")) {
 				JSONParser parser = new JSONParser();
 				userJson = (JSONObject) parser.parse(responseStr1);
 				if(userJson.get("Status").equals("Success") && userJson.get("IsLogged").toString().equals("true")) {
 					username = userJson.get("username").toString();
 					status1 = true;
 				} else return "redirect:https://speakstars.ru/login";
+			} else {
+				response.setStatus(400);
+				return "redirect:https://speakstars.ru/login";
 			}
 			if(status1) {
 				String responseStr2 = Utils.requestForService(Startup.GetCallsService() + "/Show?username=" + username+"&page="+page, "none",Utils.Services.Calls);
-				if (!responseStr2.contains("Error:")) {
+				if (!responseStr2.contains("Error")) {
 					JSONParser parser = new JSONParser();
 					userJson = (JSONObject) parser.parse(responseStr2);
 					if (userJson.get("Status").toString().equals("Success")) {
@@ -169,9 +238,9 @@ public class GatewayController {
 				{
 					String[] elements = listjson.get(i).split(";");
 					datestring.add(elements[0]);
-					if(elements[1].equals("1"))
+					if(elements[1].equals("0"))
 						typestring.add("Входящий");
-					else if(elements[1].equals("2"))
+					else if(elements[1].equals("1"))
 						typestring.add("Исходящий");
 					else
 						typestring.add("NULL");
@@ -218,6 +287,7 @@ public class GatewayController {
 			accessToken = "";
 		Utils.UserInfo info;
 		String username = "";
+		String usernameFrom ="";
 		if((!token.isEmpty() && !token.contains(" ") && !page.contains(" ")) || !appId.equals("-1"))
 		{
 			boolean status2 = false;
@@ -225,7 +295,8 @@ public class GatewayController {
 			Boolean statuss = false;
 			Boolean isLogged = false;
 			if(appId.equals("-1")) {
-			info = Utils.GetUserInfo(token);
+				info = Utils.GetUserInfo(token);
+				usernameFrom = info.getUsername();
 				statuss = info.getStatus();
 				isLogged = info.getLogged();
 				username = info.getUsername();
@@ -235,7 +306,7 @@ public class GatewayController {
 			}
 				String responseStr2 = Utils.requestPostForService(Startup.GetAccountService() + "/UsersList?page="+page+
 						"&appId="+appId+"&username="+inputusername,accessToken, token,Utils.Services.Account);
-				if (!responseStr2.contains("Error:")) {
+				if (!responseStr2.contains("Error")) {
 					JSONParser parser = new JSONParser();
 					userJson = (JSONObject) parser.parse(responseStr2);
 					if (userJson.get("Status").toString().equals("Success")) {
@@ -270,9 +341,39 @@ public class GatewayController {
 			response.setStatus(400);
 			return "redirect:https://speakstars.ru/login";
 		}
-		if(status.equals("action"))
+		if(status.equals("Добавить"))
 		{
-			Utils.requestForService(Startup.GetWebrtcService()+"/Add_phonebook?username="+inputusername+"&usernamefrom="+username,"none",Utils.Services.WebRTC);
+			String responceAdd = Utils.requestForService(Startup.GetWebrtcService()+"/Add_phonebook?username="+inputusername+"&usernamefrom="+username,"none",Utils.Services.WebRTC);
+			if(!responceAdd.contains("Error")){
+				model.addAttribute("state", "Добавлено.");
+			} else {
+				if(responceAdd.contains("Exists")){
+					model.addAttribute("state", "Такой пользователь уже есть в записной книге.");
+				} else {
+					model.addAttribute("state", "Ошибка добавления.");
+				}
+			}
+		}
+		if(status.equals("Удалить"))
+		{
+			String responceAdd = Utils.requestForService(Startup.GetWebrtcService()+"/Remove_phonebook?username="+inputusername+"&usernamefrom="+username,"none",Utils.Services.WebRTC);
+			if(!responceAdd.contains("Error")){
+				model.addAttribute("state", "Удалено.");
+			} else {
+				if(responceAdd.contains("Exists")){
+					model.addAttribute("state", "Такого пользователя нет в записной книге.");
+				} else {
+					model.addAttribute("state", "Ошибка удаления.");
+				}
+			}
+		}
+		String responseStr = Utils.requestForService(Startup.GetWebrtcService()+"/PhonebookList"+"?usernamefrom="+usernameFrom,"none",Utils.Services.WebRTC);
+		if (!responseStr.contains("Error")) {
+			JSONParser parser = new JSONParser();
+			JSONObject userJsonPhonebook = (JSONObject) parser.parse(responseStr);
+			if (userJsonPhonebook.get("Status").toString().equals("Success")) {
+				model.addAttribute("alllist", userJsonPhonebook.get("UserList"));
+			}
 		}
 		model.addAttribute("username", username);
 		return "phonebook";
@@ -287,11 +388,34 @@ public class GatewayController {
 		return true;
 	}
 
+	@GetMapping("/isthreadblockingstatus")
+	public String isthreadblockingstatus(Model model)
+	{
+		model.addAttribute("name",String.valueOf(BlockingQueueWorker.getInstance().isWorking()));
+		return "greeting";
+	}
+
+	@GetMapping("/startthreadblockingstatus")
+	public String startthreadblockingstatus(Model model)
+	{
+		model.addAttribute("name","Старт");
+		BlockingQueueWorker.getInstance().starting();
+		return "greeting";
+	}
+
+	@GetMapping("/stopthreadblockingstatus")
+	public String stopthreadblockingstatus(Model model)
+	{
+		model.addAttribute("name","Стоп");
+		BlockingQueueWorker.getInstance().stopping();
+		return "greeting";
+	}
+
 	@GetMapping("/payment")
 	public String showCash(@CookieValue(name="Token", defaultValue= "") String token,
-						   @RequestParam(name="coins", required=false, defaultValue= "") String cash,
+						   @RequestParam(name="orderid", required=false, defaultValue= "") String orderid,
 						Model model,
-						HttpServletResponse response) throws IOException, ParseException, InterruptedException {
+						HttpServletResponse response) throws IOException, ParseException, InterruptedException, JSONException {
 
 		if(!token.isEmpty() && !token.contains(" "))
 		{
@@ -301,26 +425,67 @@ public class GatewayController {
 			JSONObject userJson = new JSONObject();
 			String username = "";
 			String responseStr1 = Utils.requestForService(Startup.GetAccountService()+"/UserInfo",token,Utils.Services.Account);
-			if (!responseStr1.contains("Error:")) {
+			if (!responseStr1.contains("Error")) {
 				JSONParser parser = new JSONParser();
 				userJson = (JSONObject) parser.parse(responseStr1);
 				if(userJson.get("Status").equals("Success") && userJson.get("IsLogged").toString().equals("true")) {
 					username = userJson.get("username").toString();
 					status1 = true;
-					if(isNumber(cash)) {
-						String responcestr = Utils.requestForService(Startup.GetPaymentService() + "/Add_cash?username=" + username + "&cash=" + cash, "none", Utils.Services.Payment);
-						statusmessage = "Добавлено";
-						if(responcestr.contains("Error:Timeout") )
-							BlockingQueueWorker.getInstance().setQuery(Startup.GetPaymentService() + "/Add_cash?username=" + username+"&cash="+cash,Utils.Services.Payment);
-					} else if(!cash.isEmpty()){
-						statusmessage = "Необходимо ввести число";
+					if(!orderid.isEmpty()) {
+						String cash = "";
+						{
+							String basicAuth = Startup.paypalclient + ":" + Startup.paypalsecret;
+							String tokenPayPalString = Utils.easyRequestPostAuthForService("https://api.sandbox.paypal.com/v1/oauth2/token/",
+									"none",
+									"grant_type=client_credentials",
+									"Basic " + Base64.getEncoder().encodeToString(basicAuth.getBytes()));
+							org.json.JSONObject PayPalJson = null;
+							if (!tokenPayPalString.contains("Error")) {
+								PayPalJson = new org.json.JSONObject(tokenPayPalString);
+							}
+							double paymentSum = 0;
+							if (PayPalJson != null && !PayPalJson.isNull("access_token")) {
+								String accessTokenPaypal = PayPalJson.getString("access_token");
+								String requestOrderInfo = Utils.easyRequestGetAuthForService("https://api.sandbox.paypal.com/v2/checkout/orders/" + orderid,
+										"Bearer " + accessTokenPaypal);
+								PayPalJson = null;
+								if (!requestOrderInfo.contains("Error")) {
+									PayPalJson = new org.json.JSONObject(requestOrderInfo);
+								}
+								if (PayPalJson != null && !PayPalJson.isNull("status") && !PayPalJson.isNull("purchase_units")) {
+									String PayPalStatus = PayPalJson.getString("status");
+									JSONArray purchaseUnits = PayPalJson.getJSONArray("purchase_units");
+									for (int i = 0; i < purchaseUnits.length(); i++) {
+										org.json.JSONObject purchaseUnit = purchaseUnits.getJSONObject(i);
+										paymentSum += purchaseUnit.getJSONObject("amount").getDouble("value");
+									}
+									cash = String.valueOf(paymentSum);
+
+								} else {
+									statusmessage = "Ошибка оплаты";
+								}
+							} else {
+								statusmessage = "Ошибка платежа";
+							}
+						}
+						if(!cash.isEmpty()) {
+							String responcestr = Utils.requestForService(Startup.GetPaymentService() + "/Add_cash?username=" + username + "&orderid=" + orderid + "&cash=" + cash, "none", Utils.Services.Payment);
+							statusmessage = "Добавлено";
+							if (responcestr.contains("Error:Timeout"))
+								BlockingQueueWorker.getInstance().setQuery(Startup.GetPaymentService() + "/Add_cash?username=" + username + "&orderid=" + orderid + "&cash=" + cash, Utils.Services.Payment);
+							else if (responcestr.contains("Error"))
+								statusmessage = "Ошибка платежа";
+						}
 					}
 
 				}  else return "redirect:https://speakstars.ru/login";
+			} else {
+				response.setStatus(400);
+				return "redirect:https://speakstars.ru/login";
 			}
 			if(status1) {
 				String responseStr2 = Utils.requestForService(Startup.GetPaymentService() + "/Show_cash?username=" + username, "none",Utils.Services.Payment);
-				if (!responseStr2.contains("Error:")) {
+				if (!responseStr2.contains("Error")) {
 					JSONParser parser = new JSONParser();
 					userJson = (JSONObject) parser.parse(responseStr2);
 					if (userJson.get("Status").equals("Success")) {
@@ -337,6 +502,7 @@ public class GatewayController {
 		}
 		else {
 			response.setStatus(400);
+			return "redirect:https://speakstars.ru/login";
 		}
 		return "payment";
 	}
@@ -351,7 +517,7 @@ public class GatewayController {
 		if(!body.get("username")[0].isEmpty() && !body.get("password")[0].isEmpty() && !body.get("username")[0].contains(" ") && !body.get("password")[0].contains(" "))
 		{
 			String responseStr1 = Utils.requestPostForService(Startup.GetAccountService()+"/Create?username="+body.get("username")[0],body.get("password")[0],"none",Utils.Services.Account);
-			if (!responseStr1.contains("Error:")) {
+			if (!responseStr1.contains("Error")) {
 				JSONParser parser = new JSONParser();
 				JSONObject userJson = (JSONObject) parser.parse(responseStr1);
 				if(userJson.get("Status").toString().equals("Success")) {
@@ -360,7 +526,56 @@ public class GatewayController {
 				model.addAttribute("name","Error create user.");
 			}
 			String responseStr2 = Utils.requestForService(Startup.GetPaymentService()+"/New_purse?username="+body.get("username")[0],"none",Utils.Services.Payment);
-			if (!responseStr2.contains("Error:")) {
+			if (!responseStr2.contains("Error")) {
+				JSONParser parser = new JSONParser();
+				JSONObject userJson = (JSONObject) parser.parse(responseStr2);
+				if(userJson.get("Status").toString().equals("Success")) {
+					return "redirect:https://speakstars.ru/login";
+				}
+			} else
+			{
+				Utils.requestPostForService(Startup.GetAccountService()+"/Delete?username="+body.get("username")[0],body.get("password")[0],"none",Utils.Services.Account);
+				model.addAttribute("name","Error create purse. Operation rollback.");
+			}
+		}
+		else {
+			model.addAttribute("name","Error parameters");
+			response.setStatus(400);
+		}
+		return "greeting";
+	}
+
+
+	@GetMapping("/registrationVK")
+	public String registerVKGet(@RequestParam(name="uid", required=false, defaultValue= "") String uid,
+							 @RequestParam(name="hash", required=false, defaultValue= "") String hash,
+								Model model){
+			model.addAttribute("uidmodel",uid);
+			model.addAttribute("hashmodel",hash);
+			return "registerVK";
+	}
+
+
+	@PostMapping("/registrationVK")
+	public String registerVK(Model model,
+						   HttpServletRequest request,
+						   HttpServletResponse response) throws IOException, ParseException {
+		Map<String,String[]> body = request.getParameterMap();
+		if(!body.get("username")[0].isEmpty() && !body.get("password")[0].isEmpty() && !body.get("username")[0].contains(" ") && !body.get("password")[0].contains(" "))
+		{
+			if(!org.apache.commons.codec.digest.DigestUtils.md5Hex(Startup.appIDVK+body.get("uid")[0]+Startup.secretVK).equals(body.get("hash")[0]))
+				return "redirect:https://speakstars.ru/login";
+			String responseStr1 = Utils.requestPostForService(Startup.GetAccountService()+"/Create?username="+body.get("username")[0]+"&uid="+body.get("uid")[0],body.get("password")[0],"none",Utils.Services.Account);
+			if (!responseStr1.contains("Error")) {
+				JSONParser parser = new JSONParser();
+				JSONObject userJson = (JSONObject) parser.parse(responseStr1);
+				if(userJson.get("Status").toString().equals("Success")) {
+				}
+			} else {
+				model.addAttribute("name","Error create user.");
+			}
+			String responseStr2 = Utils.requestForService(Startup.GetPaymentService()+"/New_purse?username="+body.get("username")[0],"none",Utils.Services.Payment);
+			if (!responseStr2.contains("Error")) {
 				JSONParser parser = new JSONParser();
 				JSONObject userJson = (JSONObject) parser.parse(responseStr2);
 				if(userJson.get("Status").toString().equals("Success")) {
@@ -397,7 +612,7 @@ public class GatewayController {
 			JSONObject userJson = new JSONObject();
 			String username = "";
 			String responseStr1 = Utils.requestForService(Startup.GetAccountService()+"/UserInfo",token,Utils.Services.Account);
-			if (!responseStr1.contains("Error:")) {
+			if (!responseStr1.contains("Error")) {
 				JSONParser parser = new JSONParser();
 				userJson = (JSONObject) parser.parse(responseStr1);
 				if(userJson.get("Status").equals("Success") && userJson.get("IsLogged").toString().equals("true")) {
@@ -407,7 +622,7 @@ public class GatewayController {
 			}
 			if(status1) {
 				String responseStr2 = Utils.requestForService(Startup.GetPaymentService()+"/Withdraw_cash?username=" + username+"&cash="+cash, "none",Utils.Services.Payment);
-				if (!responseStr2.contains("Error:")) {
+				if (!responseStr2.contains("Error")) {
 					JSONParser parser = new JSONParser();
 					userJson = (JSONObject) parser.parse(responseStr2);
 					if (userJson.get("Status").equals("Success")) {
@@ -431,7 +646,8 @@ public class GatewayController {
 	public String addCall(@CookieValue(name="Token", defaultValue= "") String token,
 						  @RequestParam(name="duration", required=false, defaultValue= "") String duration,
 						  @RequestParam(name="usernameto", required=false, defaultValue= "") String usernameto,
-						  @RequestParam(name="datetime", required=false, defaultValue= "") String datetime,
+						  @RequestParam(name="updatelast", required=false, defaultValue= "false")String updatelast,
+						  @RequestParam(name="type", required=false, defaultValue= "false")String type,
 						  Model model,
 						  HttpServletResponse response) throws IOException, ParseException {
 		if(!token.isEmpty() && !token.contains(" ") && !duration.contains(" "))
@@ -441,7 +657,7 @@ public class GatewayController {
 			JSONObject userJson = new JSONObject();
 			String username = "";
 			String responseStr1 = Utils.requestForService(Startup.GetAccountService()+"/UserInfo",token,Utils.Services.Account);
-			if (!responseStr1.contains("Error:")) {
+			if (!responseStr1.contains("Error")) {
 				JSONParser parser = new JSONParser();
 				userJson = (JSONObject) parser.parse(responseStr1);
 				if(userJson.get("Status").equals("Success") && userJson.get("IsLogged").toString().equals("true")) {
@@ -450,8 +666,8 @@ public class GatewayController {
 				}  else return "redirect:https://speakstars.ru/login";
 			}
 			if(status1) {
-				String responseStr2 = Utils.requestForService(Startup.GetCallsService() + "/New?username=" + username+"&duration="+duration+"&usernameto="+usernameto+"&datetime="+datetime, "none",Utils.Services.Calls);
-				if (!responseStr2.contains("Error:")) {
+				String responseStr2 = Utils.requestForService(Startup.GetCallsService() + "/New?username=" + username+"&duration="+duration+"&usernameto="+usernameto+"&updatelast="+updatelast+"&type="+type, "none",Utils.Services.Calls);
+				if (!responseStr2.contains("Error")) {
 					JSONParser parser = new JSONParser();
 					userJson = (JSONObject) parser.parse(responseStr2);
 					if (userJson.get("Status").equals("Success")) {
@@ -482,7 +698,7 @@ public class GatewayController {
 		JSONObject userJson = new JSONObject();
 		String username = "";
 		String responseStr1 = Utils.requestForService(Startup.GetAccountService()+"/UserInfo",token,Utils.Services.Account);
-		if (!responseStr1.contains("Error:")) {
+		if (!responseStr1.contains("Error")) {
 			JSONParser parser = new JSONParser();
 			userJson = (JSONObject) parser.parse(responseStr1);
 			if (userJson.get("Status").equals("Success") && userJson.get("IsLogged").toString().equals("true")) {

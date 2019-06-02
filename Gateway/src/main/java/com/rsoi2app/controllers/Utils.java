@@ -15,12 +15,13 @@ import java.net.URL;
 import java.net.URLConnection;
 
 public class Utils {
-    public static String requestForService(String urlString,String cookie, Services numberService) throws IOException {
+    public static String requestForService(String urlString,String cookie, Services numberService) throws IOException, ParseException {
         String firstSymbol;
         if(urlString.contains("?"))
             firstSymbol = "&";
         else
             firstSymbol = "?";
+        updateToken(numberService);
         if(numberService == Services.Account)
             urlString += firstSymbol+"serviceToken=" + Startup.getAccountToken() + "&serviceSalt=" + Startup.getAccountSalt() + "&serviceTime=" + Startup.getAccountTime();
         if(numberService == Services.Calls)
@@ -38,7 +39,7 @@ public class Utils {
             connection.connect();
             is = connection.getInputStream();
             if(connection.getResponseCode() == 405) {
-                updateToken(numberService);
+                //updateToken(numberService);
                 url = new URL(urlString);
                 connection = (HttpURLConnection)url.openConnection();
                 writeGetInfo(connection, cookie);
@@ -47,9 +48,13 @@ public class Utils {
             }
             reader = new InputStreamReader(is);
         }
+        catch (java.net.SocketTimeoutException e) {
+            return "Error:Timeout"+e.getMessage();
+        }
         catch (Exception e)
         {
-            return "Error:Timeout"+e.getMessage();
+
+            return "Error"+e.getMessage();
         }
         return getResult(reader);
     }
@@ -73,7 +78,53 @@ public class Utils {
         return getResult(reader);
     }
 
-    public static String requestPostForService(String urlString,String postdata, String cookie, Services numberService) throws IOException {
+    public static String easyRequestGetAuthForService(String urlString, String propertyauth)  throws IOException
+    {
+
+        InputStream is;
+        InputStreamReader reader;
+        try {
+            URLConnection connection = new URL(urlString).openConnection();
+            connection.setReadTimeout(3000);
+            writeGetInfo(connection,"none");
+            connection.addRequestProperty("Authorization", propertyauth);
+            is = connection.getInputStream();
+            reader = new InputStreamReader(is);
+        }
+        catch (Exception e)
+        {
+            return "Error:"+e.getMessage();
+        }
+        return getResult(reader);
+    }
+
+    public static String easyRequestPostAuthForService(String urlString, String cookie, String postdata, String propertyauth)  throws IOException
+    {
+        InputStream is;
+        InputStreamReader reader;
+        try {
+            URL url = new URL(urlString);
+            HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+            writeGetInfo(connection,cookie);
+            connection.addRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            connection.addRequestProperty("Authorization", propertyauth);
+            connection.connect();
+            OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());
+            writer.write(postdata);
+            writer.flush();
+            is = connection.getInputStream();
+            reader = new InputStreamReader(is);
+        }
+        catch (Exception e)
+        {
+            return "Error:"+e.getMessage();
+        }
+        String result = getResult(reader);
+        return result;
+    }
+
+    public static String requestPostForService(String urlString,String postdata, String cookie, Services numberService) throws IOException, ParseException {
+        updateToken(numberService);
         String firstSymbol;
         if(urlString.contains("?"))
             firstSymbol = "&";
@@ -90,7 +141,6 @@ public class Utils {
         InputStream is;
         InputStreamReader reader;
         try {
-            updateToken(numberService);
             URL url = new URL(urlString);
             HttpURLConnection connection = (HttpURLConnection)url.openConnection();
             writeGetInfo(connection,cookie);
@@ -135,16 +185,13 @@ public class Utils {
         return sb.toString();
     }
 
-    private static void writeGetInfo(URLConnection connection,String cookie) throws IOException {
+    private static void writeGetInfo(URLConnection connection,String cookie){
         connection.setConnectTimeout(Startup.GetTimeout());
         connection.setReadTimeout(Startup.GetTimeout());
         connection.setDoOutput(true);
         connection.setDoInput(true);
         if(!cookie.contains("none"))
             connection.addRequestProperty("Cookie", "Token=" + cookie);
-        OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());
-        writer.write(Startup.servicePassword);
-        writer.flush();
     }
 
     public static class UserInfo{
@@ -179,32 +226,30 @@ public class Utils {
 
     public static UserInfo GetUserInfo(String token) throws IOException, ParseException {
         UserInfo info = new UserInfo();
+        info.setStatus(false);
+        info.setLogged(false);
+        info.setUsername("");
         if(token.isEmpty() || token.equals("") || token.contains(" "))
         {
-            info.setStatus(false);
-            info.setLogged(false);
-            info.setUsername("");
             return info;
         }
         String responseStr = Utils.requestForService(Startup.GetAccountService()+"/UserInfo",token,Utils.Services.Account);
         JSONParser parser = new JSONParser();
         JSONObject userJson = new JSONObject();
-        userJson = (JSONObject) parser.parse(responseStr);
+        if(!responseStr.contains("Error"))
+            userJson = (JSONObject) parser.parse(responseStr);
+        else
+            return info;
+        if(!userJson.containsKey("Status"))
+            return info;
         if (userJson.get("Status").equals("Success"))
             info.setStatus(true);
         else {
-            info.setStatus(false);
-            info.setLogged(false);
-            info.setUsername("");
             return info;
         }
         if (userJson.get("IsLogged").toString().equals("true")) {
             info.setLogged(true);
             info.setUsername(userJson.get("username").toString());
-        }
-        else {
-            info.setLogged(false);
-            info.setUsername("");
         }
         return info;
     }

@@ -4,7 +4,9 @@ import com.rsoi2app_payment.config.Startup;
 import com.rsoi2app_payment.models.PaymentModel;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import javax.servlet.http.HttpServletResponse;
 import java.sql.SQLException;
@@ -65,9 +67,10 @@ public class PaymentController {
 										   @RequestParam(name="serviceSalt", defaultValue = "-1") String serviceSalt,
 										   @RequestParam(name="serviceTime", defaultValue = "-1") String serviceTime,
 											@RequestParam(name="cash", required=false, defaultValue= "") String cash,
+										   @RequestParam(name="orderid", required=false, defaultValue= "") String orderid,
 										 	HttpServletResponse response) {
 		PaymentModel model = new PaymentModel();
-		model.SetLogs("/Add_cash/?username="+username+"&cash="+cash);
+		model.SetLogs("/Add_cash/?username="+username+"&cash="+cash+"&orderid="+orderid);
 		HashMap<String, Object> jsonAnswer = new LinkedHashMap<String, Object>();
 		if(model.checkServiceToken(serviceToken,serviceSalt,serviceTime))
 		{
@@ -77,9 +80,9 @@ public class PaymentController {
 			} catch (SQLException exc) {}
 			return jsonAnswer;
 		}
-		if(!username.isEmpty() && !cash.isEmpty())
+		if(!username.isEmpty() && !cash.isEmpty() && !orderid.isEmpty())
 		{
-			if(model.AddCash(cash,username)) {
+			if(model.AddCash(cash,username,orderid)) {
 				setStatus(200,response,jsonAnswer);
 			}
 			else {
@@ -206,27 +209,17 @@ public class PaymentController {
 		return jsonAnswer;
 	}
 
-	@PostMapping("/GetServiceToken")
+	@GetMapping("/GetServiceToken")
 	@ResponseBody
-	public HashMap<String, String> getServiceToken(@RequestBody String password) {
-		PaymentModel model = new PaymentModel();
-		model.SetLogs("/GetServiceToken");
+	public HashMap<String, String> GetServiceToken() {
 		HashMap<String, String> jsonAnswer = new LinkedHashMap<String, String>();
-		if(!password.equals(Startup.servicePassword)){
-			try {
-				model.finalize();
-			} catch (SQLException exc) {}
-			jsonAnswer.put("token","");
-			jsonAnswer.put("salt","");
-			jsonAnswer.put("time","");
-			return jsonAnswer;
-		}
 		String time = String.valueOf(System.currentTimeMillis() + Startup.timelivems);
 		String salt = generateToken();
-		String token = org.apache.commons.codec.digest.DigestUtils.md5Hex(Startup.serviceLogin+Startup.servicePassword+salt+time);
+		String token = DigestUtils.md5Hex(Startup.serviceLogin+Startup.servicePassword+salt+time);
 		jsonAnswer.put("token",token);
 		jsonAnswer.put("salt",salt);
 		jsonAnswer.put("time",time);
+		PaymentModel model = new PaymentModel();
 		model.SetLogs("/GetServiceToken?serviceToken="+token+
 				"&serviceSalt="+salt+"&serviceTime="+time);
 		try {

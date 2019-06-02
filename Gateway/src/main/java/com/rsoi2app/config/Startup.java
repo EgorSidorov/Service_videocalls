@@ -4,10 +4,15 @@ import java.util.Map;
 
 public class Startup
 {
-        private static String MYSQLCONNECTION = "jdbc:mysql://speakstars.ru:3306?user=mirton&password=VDBE090968&autoReconnect=true&useSSL=false";
+        private static String MYSQLCONNECTION = "jdbc:mysql://speakstars.ru:3306?user=_user_&password=_password_&autoReconnect=true&useSSL=false";
         ////////////////////////
         public static String serviceLogin = "account";
         public static String servicePassword = "qwerty";
+
+        public static String secretVK = "t2TDOTCT3YnIRAsSeAif";
+    public static String appIDVK = "5919606";
+    public static String paypalclient = "AT9lai_PQk1VRnpFqYvarqZUF4L7spREMAwZ00Zbl02KU_X6ekZNpd8GSFm9Z2l22XwQyg-zkC2OvZGI";
+    public static String paypalsecret = "EDjF4IDvrQ68981yOChzo74JLJESB8cAICbNZImMP8rQEYE9xTSS1r3aT_OnZuHuP0yRbZfy7ze_omUw";
     public static Integer timelivems = 10000000;
 
     public static synchronized String getAccountToken() {

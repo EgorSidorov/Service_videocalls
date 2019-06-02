@@ -11,7 +11,7 @@ public class CallsModel {
     public Connection connection;
     Boolean dbStatus;
     Boolean queryStatus;
-    int sizePage = 2;
+    int sizePage = 10;
     public ResultSet resObj = null;
     Boolean _isTest = false;
 
@@ -80,9 +80,13 @@ public class CallsModel {
         return CallsList;
     }
 
-    public Boolean AddCall(String duration, String username, String usernameto, String datetime)
+    public Boolean AddCall(String duration, String username, String usernameto, String datetime, Boolean updatelast, String type)
     {
-        Statement stmtObj = RequestDB("INSERT INTO Calls.History (Duration, Username, usernameto, datetime, type) VALUES("+duration+",'"+username+"','"+usernameto+"','"+datetime+"',1)",false);
+        Statement stmtObj;
+        if(updatelast)
+            stmtObj = RequestDB("UPDATE Calls.History Set Duration="+duration+" WHERE Username='"+username+"',usernameto='"+usernameto+"',datetime='"+datetime+"'",false);
+        else
+            stmtObj = RequestDB("INSERT INTO Calls.History (Duration, Username, usernameto, datetime, type) VALUES("+duration+",'"+username+"','"+usernameto+"','"+datetime+"',"+type+")",false);
         if(!GetQueryStatus())
         {
             queryStatus = false;

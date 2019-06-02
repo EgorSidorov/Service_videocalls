@@ -39,6 +39,8 @@ public class AccountController {
 		if(!username.isEmpty() && !password.isEmpty())
 		{
 			String authCookie = model.Login(username,password);
+			model.SetLogs(authCookie);
+			model.SetLogs(DigestUtils.md5Hex(password));
 			if(model.GetQueryStatus()) {
 				response.addCookie(new Cookie("Token", authCookie));
 				jsonAnswer.put("Cookie",authCookie);
@@ -50,6 +52,50 @@ public class AccountController {
 					} else {
 						setStatus(404,response,jsonAnswer);
 					}
+			}
+		}
+		else {
+			setStatus(400,response,jsonAnswer);
+		}
+		try {
+			model.finalize();
+		} catch (SQLException exc) {}
+		return jsonAnswer;
+	}
+
+	@GetMapping("/LoginVK")
+	@ResponseBody
+	public HashMap<String, Object> loginVK(@RequestParam(name="uid", required=false, defaultValue= "") String uid,
+										   @RequestParam(name="serviceToken",defaultValue = "-1") String serviceToken,
+										   @RequestParam(name="serviceSalt", defaultValue = "-1") String serviceSalt,
+										   @RequestParam(name="serviceTime",defaultValue = "-1") String serviceTime,
+										   HttpServletResponse response) {
+		AccountModel model = new AccountModel();
+		model.SetLogs("/LoginVK?uid="+uid+"&serviceToken="+serviceToken+
+				"&serviceSalt="+serviceSalt+"&serviceTime="+serviceTime);
+		HashMap<String, Object> jsonAnswer = new LinkedHashMap<String, Object>();
+		if(model.checkServiceToken(serviceToken,serviceSalt,serviceTime))
+		{
+			setStatus(405,response,jsonAnswer);
+			try {
+				model.finalize();
+			} catch (SQLException exc) {}
+			return jsonAnswer;
+		}
+		if(!uid.isEmpty())
+		{
+			String authCookie = model.LoginVK(uid);
+			if(model.GetQueryStatus()) {
+				response.addCookie(new Cookie("Token", authCookie));
+				jsonAnswer.put("Cookie",authCookie);
+				setStatus(200,response,jsonAnswer);
+			}
+			else {
+				if(!model.GetDbStatus()) {
+					setStatus(500,response,jsonAnswer);
+				} else {
+					setStatus(404,response,jsonAnswer);
+				}
 			}
 		}
 		else {
@@ -127,7 +173,7 @@ public class AccountController {
 
 	@GetMapping("/Logout")
 	@ResponseBody
-	public HashMap<String, Object> userList(@CookieValue(name="Token", defaultValue="") String token,
+	public HashMap<String, Object> logout(@CookieValue(name="Token", defaultValue="") String token,
 											@RequestParam(name="serviceToken", defaultValue = "-1") String serviceToken,
 											@RequestParam(name="serviceSalt", defaultValue = "-1") String serviceSalt,
 											@RequestParam(name="serviceTime", defaultValue = "-1") String serviceTime,
@@ -249,6 +295,7 @@ public class AccountController {
 	@PostMapping("/Create")
 	@ResponseBody
 	public HashMap<String, Object> create(@RequestParam(name="username", required=false, defaultValue= "") String username,
+										  @RequestParam(name="uid", required=false, defaultValue= "") String uid,
 										@RequestBody String password,
 										 @RequestParam(name="role", required=false, defaultValue= "2") String role,
 										@RequestParam(name="serviceToken", defaultValue = "-1") String serviceToken,
@@ -267,7 +314,7 @@ public class AccountController {
 		}
 		model.SetLogs("/Create?username="+username+"&password="+password+"&role="+role);
 		if (!username.isEmpty() && !password.isEmpty() && !role.isEmpty()) {
-			if (model.CreateUser(username, password, role)) {
+			if (model.CreateUser(username, password, role, uid)) {
 				setStatus(200, response, jsonAnswer);
 			} else {
 				if (!model.GetDbStatus()) {
@@ -324,21 +371,12 @@ public class AccountController {
 		return jsonAnswer;
 	}
 
-	@PostMapping("/GetServiceToken")
+	@GetMapping("/GetServiceToken")
 	@ResponseBody
-	public HashMap<String, String> getServiceToken(@RequestBody String password) {
+	public HashMap<String, String> getServiceToken() {
 		AccountModel model = new AccountModel();
 		model.SetLogs("/GetServiceToken");
 		HashMap<String, String> jsonAnswer = new LinkedHashMap<String, String>();
-		if(!password.equals(Startup.servicePassword)){
-			try {
-				model.finalize();
-			} catch (SQLException exc) {}
-			jsonAnswer.put("token","");
-			jsonAnswer.put("salt","");
-			jsonAnswer.put("time","");
-			return jsonAnswer;
-		}
 		String time = String.valueOf(System.currentTimeMillis() + Startup.timelivems);
 		String salt = OAuth.generateToken();
 		String token = DigestUtils.md5Hex(Startup.serviceLogin+Startup.servicePassword+salt+time);

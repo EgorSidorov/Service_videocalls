@@ -78,8 +78,9 @@
 	          <version>2.2</version>
 			  <configuration>
 				  <path>/service/webrtc</path>
-				  <url>http://194.58.121.174:8080/manager/text</url>
-				  
+				  <url>http://speakstars.ru:8080/manager/text</url>
+				  <username>_user_</username>
+				  <password>_password_</password>
 				  <server>TomcatServerRsoi</server>
 				  <port>8080</port>
 			   </configuration>

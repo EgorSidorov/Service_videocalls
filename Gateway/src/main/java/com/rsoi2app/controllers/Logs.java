@@ -25,8 +25,17 @@ public class Logs {
             boolean status1 = false;
             JSONObject userJson = new JSONObject();
             String logs = "";
+            Utils.UserInfo info = Utils.GetUserInfo(token);
+            if(info.getStatus() && info.getLogged()) {
+                String usernameFrom = info.getUsername();
+                model.addAttribute("username",usernameFrom);
+            }
+            else {
+                response.setStatus(500);
+                return "redirect:https://speakstars.ru/login";
+            }
             String responseStr1 = Utils.requestForService(Startup.GetAccountService()+"/Logs?page="+page,token,Utils.Services.Account);
-            if (!responseStr1.contains("Error:")) {
+            if (!responseStr1.contains("Error")) {
                 JSONParser parser = new JSONParser();
                 userJson = (JSONObject) parser.parse(responseStr1);
                 if(userJson.get("Status").equals("Success") && userJson.containsKey("logs")) {
@@ -37,17 +46,18 @@ public class Logs {
             if(status1)
                 model.addAttribute("name",logs);
             else
-                model.addAttribute("name","Error token");
+                model.addAttribute("name","Необходима роль мастера.");
         }
         else {
             model.addAttribute("name","Error parameters");
             response.setStatus(400);
         }
-        return "greeting";
+        return "statistics";
     }
 
     @GetMapping("/Calls_logs")
     public String callsLogs(
+            @CookieValue(name="Token", defaultValue= "") String token,
             @RequestParam(name="page", required=false, defaultValue= "") String page,
             Model model,
             HttpServletResponse response) throws IOException, ParseException {
@@ -56,8 +66,17 @@ public class Logs {
             boolean status1 = false;
             JSONObject userJson = new JSONObject();
             String logs = "";
+            Utils.UserInfo info = Utils.GetUserInfo(token);
+            if(info.getStatus() && info.getLogged()) {
+                String usernameFrom = info.getUsername();
+                model.addAttribute("username",usernameFrom);
+            }
+            else {
+                response.setStatus(500);
+                return "redirect:https://speakstars.ru/login";
+            }
             String responseStr1 = Utils.requestForService(Startup.GetGatewayHostPort()+"/service/calls/Logs?page="+page,"none",Utils.Services.Calls);
-            if (!responseStr1.contains("Error:")) {
+            if (!responseStr1.contains("Error")) {
                 JSONParser parser = new JSONParser();
                 userJson = (JSONObject) parser.parse(responseStr1);
                 if(userJson.get("Status").equals("Success") && userJson.containsKey("logs")) {
@@ -68,17 +87,18 @@ public class Logs {
             if(status1)
                 model.addAttribute("name",logs);
             else
-                model.addAttribute("name","Error");
+                model.addAttribute("name","Необходима роль мастера.");
         }
         else {
             model.addAttribute("name","Error parameters");
             response.setStatus(400);
         }
-        return "greeting";
+        return "statistics";
     }
 
     @GetMapping("/Payment_logs")
     public String paymentLogs(
+            @CookieValue(name="Token", defaultValue= "") String token,
             @RequestParam(name="page", required=false, defaultValue= "") String page,
             Model model,
             HttpServletResponse response) throws IOException, ParseException {
@@ -87,8 +107,17 @@ public class Logs {
             boolean status1 = false;
             JSONObject userJson = new JSONObject();
             String logs = "";
+            Utils.UserInfo info = Utils.GetUserInfo(token);
+            if(info.getStatus() && info.getLogged()) {
+                String usernameFrom = info.getUsername();
+                model.addAttribute("username",usernameFrom);
+            }
+            else {
+                response.setStatus(500);
+                return "redirect:https://speakstars.ru/login";
+            }
             String responseStr1 = Utils.requestForService(Startup.GetGatewayHostPort()+"/service/payment/Logs?page="+page,"none",Utils.Services.Payment);
-            if (!responseStr1.contains("Error:")) {
+            if (!responseStr1.contains("Error")) {
                 JSONParser parser = new JSONParser();
                 userJson = (JSONObject) parser.parse(responseStr1);
                 if(userJson.get("Status").equals("Success") && userJson.containsKey("logs")) {
@@ -99,12 +128,12 @@ public class Logs {
             if(status1)
                 model.addAttribute("name",logs);
             else
-                model.addAttribute("name","Error");
+                model.addAttribute("name","Необходима роль мастера.");
         }
         else {
             model.addAttribute("name","Error parameters");
             response.setStatus(400);
         }
-        return "greeting";
+        return "statistics";
     }
 }

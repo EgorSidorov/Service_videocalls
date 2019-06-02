@@ -1,0 +1,22 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<link rel="stylesheet" type="text/css" href="css/authorize.css" />
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Авторизация</title>
+</head>
+<body onload="instance();">
+
+<div class="autoriz_cont">
+    <h1>Регистрация нового пользователя</h1>
+    <form method="POST">
+        <p><input type="text" name="username" placeholder="Ввведите логин"/> <input type="password" name="password" placeholder="Введите пароль"/>
+            <input type="hidden" name="status" value="action"/>
+            <input type="hidden" name="uid" th:value='${uidmodel}' />
+            <input type="hidden" name="hash" th:value='${hashmodel}' />
+        <input type="submit" value="Зарегистрироваться"/></p>
+    </form>
+    <a href="https://speakstars.ru/login" th:text="'Уже зарегестрированы? Авторизуйтесь.'" />
+</div>
+</body>
+</html>

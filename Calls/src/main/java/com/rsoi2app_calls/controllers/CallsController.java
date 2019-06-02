@@ -4,7 +4,9 @@ import com.rsoi2app_calls.config.Startup;
 import com.rsoi2app_calls.models.CallsModel;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.DigestUtils;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import javax.servlet.http.HttpServletResponse;
 import java.sql.SQLException;
@@ -21,6 +23,8 @@ public class CallsController {
 	public HashMap<String, Object> Login(@RequestParam(name="username", required=false, defaultValue= "") String username,
 										  @RequestParam(name="duration", required=false, defaultValue= "") String duration,
 										 @RequestParam(name="usernameto", required=false, defaultValue= "") String usernameto,
+										 @RequestParam(name="updatelast", required=false, defaultValue= "false")String updatelast,
+										 @RequestParam(name="type", required=false, defaultValue= "false")String type,
 										 @RequestParam(name="serviceToken", defaultValue = "-1") String serviceToken,
 										 @RequestParam(name="serviceSalt", defaultValue = "-1") String serviceSalt,
 										 @RequestParam(name="serviceTime", defaultValue = "-1") String serviceTime,
@@ -42,7 +46,7 @@ public class CallsController {
 		model.SetLogs("/New/?username="+username+"&duration="+duration);
 		if(!username.isEmpty() && !duration.isEmpty())
 		{
-			if(model.AddCall(duration,username,usernameto,currentTime)) {
+			if(model.AddCall(duration,username,usernameto,currentTime,Boolean.getBoolean(updatelast),type)) {
 				setStatus(201,response,jsonAnswer);
 			}
 			else {
@@ -133,27 +137,17 @@ public class CallsController {
 		return jsonAnswer;
 	}
 
-	@PostMapping("/GetServiceToken")
+	@GetMapping("/GetServiceToken")
 	@ResponseBody
-	public HashMap<String, String> getServiceToken(@RequestBody String password) {
-		CallsModel model = new CallsModel();
-		model.SetLogs("/GetServiceToken");
+	public HashMap<String, String> GetServiceToken() {
 		HashMap<String, String> jsonAnswer = new LinkedHashMap<String, String>();
-		if(!password.equals(Startup.servicePassword)){
-			try {
-				model.finalize();
-			} catch (SQLException exc) {}
-			jsonAnswer.put("token","");
-			jsonAnswer.put("salt","");
-			jsonAnswer.put("time","");
-			return jsonAnswer;
-		}
 		String time = String.valueOf(System.currentTimeMillis() + Startup.timelivems);
 		String salt = generateToken();
 		String token = org.apache.commons.codec.digest.DigestUtils.md5Hex(Startup.serviceLogin+Startup.servicePassword+salt+time);
 		jsonAnswer.put("token",token);
 		jsonAnswer.put("salt",salt);
 		jsonAnswer.put("time",time);
+		CallsModel model = new CallsModel();
 		model.SetLogs("/GetServiceToken?serviceToken="+token+
 				"&serviceSalt="+salt+"&serviceTime="+time);
 		try {

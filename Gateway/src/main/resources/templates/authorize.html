@@ -7,6 +7,28 @@
  </head>
  <body onload="instance();">
 
+ <script th:inline="javascript">
+     /*<![CDATA[*/
+     function loginVK(){
+         VK.Auth.login(
+             function(response){
+                 if(response.session){
+                     var mid = 'https://speakstars.ru/loginVKhard?expire='+ response.session.expire;
+                     var plusexpire = mid + '&mid=' + response.session.mid;
+                     var plussecret = plusexpire+'&secret='+response.session.secret;
+                     var plussid = plussecret+'&sid='+response.session.sid;
+                     var all = plussid+'&sig='+response.session.sig;
+                     window.location.href = all;
+                 }}
+         );
+     }
+     /*]]>*/
+ </script>
+ <script type="text/javascript" src="https://vk.com/js/api/openapi.js?160"></script>
+ <script type="text/javascript">
+     VK.init({apiId: 5919606});
+ </script>
+
 <div class="autoriz_cont">
 <img src="image/user.jpg"  width="140" height="140"/>
   <form method="post" action="https://speakstars.ru/login">
@@ -17,7 +39,11 @@
         <input type="submit"  value="Авторизоваться"/>
    </p>
   </form>
-   <a href="https://speakstars.ru/registration" th:text="'Регистрация'" />
+    <div id="vk_auth"></div>
+    <button id="authVKButton" onclick="
+    VK.Auth.logout(function(r){});
+    loginVK();">Войти через ВК</button>
+    <p><a href="https://speakstars.ru/registration">Регистрация</a></p>
 </div>
  </body>
 </html>

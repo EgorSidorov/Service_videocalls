@@ -8,7 +8,7 @@
   #remoteVideo { height: 70%; margin-top: 5%; background: #000; }
   #localVideo { width: 20%; position: absolute; right: 1.1em; bottom: 1em; border: 1px solid #333; background: #000; }
   #callButton { position: absolute; display: inline-block; left: 50%; font-size: 2em; bottom: 5%; border-radius: 1em; }
-  #endCall { position: absolute; display: inline-block; left: 30%; font-size: 2em; bottom: 5%; border-radius: 1em; }
+  #endCallbutton { position: absolute; display: inline-block; left: 30%; font-size: 2em; bottom: 5%; border-radius: 1em; }
   #userlist { position: absolute; display: inline-block; left: 10%; font-size: 2em; bottom: 5%; border-radius: 1em; }
   #status_string { position: absolute; display: inline-block; font-size: large;color:green;left: 50%; bottom-size: 2em; top: 5%; border-radius: 1em; }
  </style>
@@ -17,7 +17,7 @@
 <video id="localVideo" autoplay="autoplay"/>
 <video id="remoteVideo" autoplay="autoplay"/>
 <button id="callButton" onclick="CreateOffer();">✆</button>
-<button id="endCall" onclick="endCall();">Закончить</button>
+<button id="endCallbutton" onclick="endCall();">Закончить</button>
 <select id="userlist">
  <option th:each="listelem : ${alllist}" th:text="${listelem}"/>
 </select>
@@ -26,8 +26,8 @@
   <p><label id="call_user">Username вызывает
   </label></p>
   <menu>
-   <button onclick="SetNotReadyStatus()">Отклонить</button>
-   <button onclick="SetReadyStatus()">Принять</button>
+   <button value="cancel" onclick="SetNotReadyStatus();">Отклонить</button>
+   <button value="default" onclick="SetReadyStatus();">Принять</button>
   </menu>
  </form>
 </dialog>
@@ -48,14 +48,48 @@
  var localDescription;
  var duration = 0;
  var isinputcall = true;
+ var begincall = false;
+ var beginanswer = false;
 
  /*   constants     */
  var addressSite = 'https://speakstars.ru/';
- var intervalCheckCallsForMe = 6000;
- var intervalWaitBeforeStart = 4000;
+ var intervalCheckCallsForMe = 1000;
+ var intervalWaitBeforeStart = 2000;
  var intervalSendRequestForCalls = 1000;
- var intervalTimeout = 10000;
- var pc_config = {};
+ var intervalTimeout = 2000;
+ var pc_config = {
+
+
+         //iceTransportPolicy: 'relay',
+     iceServers: [{urls: "turn:speakstars.ru:3478",  username: "test",credential: "test"}, /*{urls: "stun:stun.l.google.com:19302"},
+         {
+             urls: 'turn:turn.anyfirewall.com:443?transport=tcp',
+             credential: 'webrtc',
+             username: 'webrtc'
+         },
+         {
+             urls: 'turn:turn.bistri.com:80',
+             credential: 'homeo',
+             username: 'homeo'
+         },
+
+         {urls: 'turn:webrtcweb.com:80',
+     username: 'muazkh',
+     credential: 'muazkh'
+ },
+
+ {
+     urls: 'turn:webrtcweb.com:443',
+     username: 'muazkh',
+     credential: 'muazkh'
+ }*/
+         {
+             urls: "turn:numb.viagenie.ca",
+             username: "sega-96@mail.ru",
+             credential: "_password_"
+         },{ urls: "stun:stun.l.google.com:19302" }]
+
+ };
  /*   constants     */
 
  /*   querys     */
@@ -82,6 +116,8 @@
  function SetReadyStatus()
  {
      clearInterval(functionCheckCallsForMe);
+     document.getElementById('callButton').disabled = true;
+     beginanswer = true;
      isinputcall = false;
      var answerFromGetCountFromIceCandidates = function(response) {
 
@@ -92,7 +128,7 @@
              //alert('before setremotedescription');
              //alert(pc.signalingState);
              //alert(jsonlevel2.substr(1,jsonlevel2.length-1));
-             pc.setRemoteDescription(new SessionDescription({type:"offer",sdp:jsonlevel2}),function(){
+             pc.setRemoteDescription(new SessionDescription({type:"offer",sdp:jsonlevel2})).then(function(){
                      //alert('after setremotedescription');
                      //alert(pc.signalingState);
                      var countFromIceCandidates = JSON.parse(response)['countfromicecandidates'];
@@ -109,12 +145,15 @@
                              pc.addIceCandidate(candidate,function(){},function(error){alert('error add ice candidate:'+error);});
                          }
                          CreateAnswer();
-                         setTimeout(function(){duration++;}, 1000)
+                         setInterval(function(){duration++;}, 1000)
                      };
-                     Send(addressSite+getFromICECandidates+'?username='+requestUser, 'GET', answerFromIceCandidates, 'none', false);},
+                     SendWithoutAnswer(addressSite+setWithdrawCash+'?cash=10', 'GET', 'none', false);
+                     setInterval(setHitoryCall,1000);
+                     document.getElementById('endCallbutton').disabled = false;
+                     Send(addressSite+getFromICECandidates+'?username='+requestUser, 'GET', answerFromIceCandidates, 'none', false);}/*,
                  function(error){
                      alert('error setRemoteDescription:'+error);
-                 });
+                 }*/);
          };
          Send(addressSite+getFromDescription+'?username='+requestUser, 'GET', answerFromDescription, 'none', false);
      };
@@ -135,6 +174,11 @@
          pc = new PeerConnection(pc_config);
          pc.addStream(stream);
          pc.onicecandidate = gotIceCandidate;
+         pc.oniceconnectionstatechange = function() {
+             if(pc.iceConnectionState == 'disconnected') {
+                 document.getElementById("status_string").innerText = 'Разговор завершен.';
+             }
+         }
          pc.onaddstream = GotRemoteStream;
      },
      function(error) { console.log(error) }
@@ -153,9 +197,14 @@
  function endCall() {
      //var addcallstring = addCall+'?duration='+duration+String.fromCharCode(38)+'usernameto='+requestUser;
      //alert(addcallstring);
-     SendWithoutAnswer(addressSite+setWithdrawCash+'?cash=100', 'GET', 'none', false);
-     SendWithoutAnswer(addressSite+addCall+'?duration='+duration+String.fromCharCode(38)+'usernameto='+requestUser,'GET', 'none', false);
+     SendWithoutAnswer(addressSite+addCall+'?duration='+duration+String.fromCharCode(38)+'usernameto='+requestUser+String.fromCharCode(38)+'updatelast=0'+String.fromCharCode(38)+'type='+isinputcall,'GET', 'none', false);
      window.location.replace(addressSite+"payment");
+ }
+
+ function setHitoryCall() {
+     //var addcallstring = addCall+'?duration='+duration+String.fromCharCode(38)+'usernameto='+requestUser;
+     //alert(addcallstring);
+     //SendWithoutAnswer(addressSite+addCall+'?duration='+duration+String.fromCharCode(38)+'usernameto='+requestUser+String.fromCharCode(38)+'updatelast=1'+String.fromCharCode(38)+'type='+isinputcall,'GET', 'none', false);
  }
 
  function CreateAnswer() {
@@ -167,7 +216,7 @@
      setTimeout(function () {
          //alert(JSON.stringify(jsonIceCandidates));
          //alert(JSON.stringify(localDescription));
-
+         //alert(addressSite+setToICECandidates+'?username='+requestUser);
          SendWithoutAnswer(addressSite+setToICECandidates+'?username='+requestUser, 'POST', JSON.stringify(jsonIceCandidates), true);
          SendWithoutAnswer(addressSite+setToDescription+'?username='+requestUser, 'POST', JSON.stringify(localDescription['sdp']), true);
          var string = requestUser+String.fromCharCode(38)+'status=1';
@@ -193,6 +242,10 @@
              candidate: event.candidate.candidate
          });
      }
+     if(beginanswer == true)
+         SendWithoutAnswer(addressSite+setToICECandidates+'?username='+requestUser, 'POST', JSON.stringify(jsonIceCandidates), true);
+     if(begincall == true)
+         SendWithoutAnswer(addressSite+setFromICECandidates, 'POST', JSON.stringify(jsonIceCandidates), true);
  }
 
  function GotRemoteStream(event){
@@ -203,6 +256,7 @@
  //начинаем звонить пользователю
  function BeginCallRequests(){
      var sdpstr = localDescription['sdp'];
+     begincall = true;
      //alert(JSON.stringify(jsonIceCandidates));
      //alert(JSON.stringify(localDescription['sdp']));
      SendWithoutAnswer(addressSite+setFromICECandidates, 'POST', JSON.stringify(jsonIceCandidates), true);
@@ -230,7 +284,10 @@
              SendWithoutAnswer(addressSite+setCallRequest+'?username='+value+String.fromCharCode(38)+'firstTime=false', 'GET', 'none', false)
          } else {
              if(responsejson["StatusCall"] == "1") {
+                 SendWithoutAnswer(addressSite+setWithdrawCash+'?cash=10', 'GET', 'none', false);
                  document.getElementById("status_string").innerText = 'Пользователь принял вызов';
+                 document.getElementById('callButton').disabled = true;
+                 document.getElementById('endCallbutton').disabled = false;
                  var answerFromGetCountToIceCandidates = function(response2) {
                      var countToIceCandidates = JSON.parse(response2)['counttoicecandidates'];
                      //alert(countToIceCandidates);
@@ -239,23 +296,26 @@
                          var responsejson1 = JSON.parse(response3);
                          var jsonlevel2 = responsejson1['todescription'];
                          //alert('after getToDescription');
-                         pc.setRemoteDescription(new SessionDescription({type:"answer",sdp:jsonlevel2},function () {
+                         answerGetToIceCandidates = function(response4) {
+                             var responsejson2 = JSON.parse(response4);
+                             var jsonlevel3 = JSON.parse(responsejson2['toicecandidates']);
+                             for (var jjj = 1; jjj <= countToIceCandidates; jjj++) {
+                                 var candidate = new IceCandidate({
+                                     sdpMLineIndex: jsonlevel3[jjj.toString()]['label'],
+                                     candidate: jsonlevel3[jjj.toString()]['candidate']
+                                 });
+                                 pc.addIceCandidate(candidate,function(){},function(error){alert('error add ice candidate:'+error);});
+                             }
+                         };
+                         Send(addressSite+getTOICECandidates+'?username='+value, 'GET', answerGetToIceCandidates, 'none', false);
+                         setTimeout(pc.setRemoteDescription(new SessionDescription({type:"answer",sdp:jsonlevel2})).then(function () {
                              //alert('success create');
-                             answerGetToIceCandidates = function(response4) {
-                                 var responsejson2 = JSON.parse(response4);
-                                 var jsonlevel3 = JSON.parse(responsejson2['toicecandidates']);
-                                 for (var jjj = 1; jjj <= countToIceCandidates; jjj++) {
-                                     var candidate = new IceCandidate({
-                                         sdpMLineIndex: jsonlevel3[jjj.toString()]['label'],
-                                         candidate: jsonlevel3[jjj.toString()]['candidate']
-                                     });
-                                     pc.addIceCandidate(candidate,function(){},function(error){alert('error add ice candidate:'+error);});
-                                 }
-                             };
-                             Send(addressSite+getTOICECandidates+'?username='+value, 'GET', answerGetToIceCandidates, 'none', false);
-                         },function (error) {
+                             setInterval(function(){duration++;}, 1000)
+                             setInterval(setHitoryCall,1000);
+                         }/*,function (error) {
                              alert('error add description:'+error);
-                         }));
+                         }))*/),2000);
+
                      };
                      Send(addressSite+getToDescription+'?username='+value, 'GET', answerGetToDescription, 'none', false);
                  };
@@ -280,7 +340,17 @@
          if(responsejson["Request"].length !== 0) {
              requestUser = responsejson["Request"];
              document.getElementById("call_user").innerText = responsejson["Request"] + ' вызывает';
-             callDialog.showModal();
+             var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+             //if(isFirefox) {
+                 if(confirm(responsejson["Request"] + ' вызывает')){
+                     SetReadyStatus();
+                 } else {
+                     SetNotReadyStatus();
+                 }
+                 //callDialog.setAttribute("open", "open");
+             //}
+             //else
+             //    callDialog.showModal();
          }
      };
      Send(addressSite+getMyCallRequest, 'GET' , answerFunction, 'none' , false)
@@ -312,11 +382,12 @@
          xhr.send();
      xhr.onreadystatechange = function() {
          if (this.readyState === 4 && this.status === 200) {
-             callBackFunction(this.response.toString());
+             callBackFunction(this.responseText);
          }
      };
  }
  /*]]>*/
 </script>
-<body onload="functionCheckCallsForMe = setInterval(CheckCallsForMe,intervalCheckCallsForMe);"/>
+<body onload="functionCheckCallsForMe = setInterval(CheckCallsForMe,intervalCheckCallsForMe);
+document.getElementById('endCallbutton').disabled = true;"/>
 </html>

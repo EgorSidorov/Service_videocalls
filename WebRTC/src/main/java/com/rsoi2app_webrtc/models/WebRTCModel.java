@@ -12,7 +12,7 @@ public class WebRTCModel {
     private Boolean dbStatus;
     private Boolean queryStatus;
     public ResultSet resObj;
-    int sizePage = 2;
+    int sizePage = 10;
 
     public WebRTCModel()
     {
@@ -112,12 +112,25 @@ public class WebRTCModel {
         return true;
     }
 
-    public Boolean AddPhoneBook(String user, String touser)
-    {
+    public Boolean AddPhoneBook(String user, String touser) throws SQLException {
         queryStatus = true;
         Statement stmtObj;
         stmtObj = RequestDB("INSERT INTO Speakstars.phonebook select * from (select '"+user+"','"+touser+"') as tmp where not exists (select * from Speakstars.phonebook where username='"+user+"' and usernameto='"+touser+"')",false);
-        if(!GetQueryStatus()) {
+        if(!GetQueryStatus()|| stmtObj.getUpdateCount() == 0) {
+            return false;
+        }
+        try {
+            if(stmtObj != null)
+                stmtObj.close();
+        } catch (SQLException e) {}
+        return true;
+    }
+
+    public Boolean RemovePhoneBook(String user, String touser) throws SQLException {
+        queryStatus = true;
+        Statement stmtObj;
+        stmtObj = RequestDB("DELETE FROM Speakstars.phonebook where username='"+user+"' and usernameto='"+touser+"'",false);
+        if(!GetQueryStatus() || stmtObj.getUpdateCount() == 0) {
             return false;
         }
         try {
@@ -396,7 +409,7 @@ public class WebRTCModel {
     {
         long currentTime = System.currentTimeMillis();
         long inputTime = Long.parseLong(time);
-        SetLogs("checkServiceToken salt="+salt+" time="+time+" serviceToken="+serviceToken);
+        //SetLogs("checkServiceToken salt="+salt+" time="+time+" serviceToken="+serviceToken);
         if(DigestUtils.md5Hex(Startup.serviceLogin+Startup.servicePassword+salt+time).equals(serviceToken) &&
                 currentTime < inputTime){
             return false;

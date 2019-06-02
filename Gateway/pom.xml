@@ -72,6 +72,11 @@
 			<artifactId>jsonassert</artifactId>
 			<version>1.4.0</version>
 		</dependency>
+		<dependency>
+			<groupId>commons-codec</groupId>
+			<artifactId>commons-codec</artifactId>
+			<version>1.9</version>
+		</dependency>
 	</dependencies>
 	
 	<build>
@@ -88,7 +93,8 @@
 			  <configuration>
 				  <path>/</path>
 				  <url>http://speakstars.ru:8080/manager/text</url>
-				              
+				              <username>_user_</username>
+ <password>_password_</password>
 <server>TomcatServerRsoi</server>
 				  <port>8080</port>
 			   </configuration>

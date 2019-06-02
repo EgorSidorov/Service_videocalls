@@ -11,7 +11,7 @@ public class PaymentModel {
     public Connection connection;
     Boolean dbStatus;
     Boolean queryStatus;
-    int sizePage = 2;
+    int sizePage = 10;
     public ResultSet resObj = null;
     Boolean _isTest = false;
 
@@ -108,9 +108,16 @@ public class PaymentModel {
         return true;
     }
 
-    public Boolean AddCash(String cash, String username)
+    public Boolean AddCash(String cash, String username, String orderid)
     {
         queryStatus = true;
+        if(username.contains(" ") || cash.contains(" ") || orderid.contains(" "))
+            return false;
+        RequestDB("INSERT INTO Payment.Story VALUES('"+orderid+"')",false);
+        if(!GetQueryStatus())
+        {
+            return false;
+        }
         Statement stmtObj = RequestDB("UPDATE Payment.Pursy SET Cash = Cash + "+cash+" WHERE Username='"+username+"'",false);
         if(!GetQueryStatus())
         {

@@ -5,7 +5,7 @@ import java.util.Map;
 
 public class Startup
 {
-        private static String MYSQLCONNECTION = "jdbc:mysql://speakstars.ru:3306?user=mirton&password=VDBE090968&autoReconnect=true&useSSL=false";
+        private static String MYSQLCONNECTION = "";
         public static String serviceLogin = "account";
         public static String servicePassword = "qwerty";
         public static Integer timelivems = 10000000;
